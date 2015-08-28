@@ -12,10 +12,10 @@
 #include <Zend/zend_interfaces.h>
 
 #include "kernel/main.h"
+#include "kernel/fcall.h"
+#include "kernel/concat.h"
 #include "kernel/memory.h"
 #include "kernel/object.h"
-#include "kernel/concat.h"
-#include "kernel/fcall.h"
 
 
 /**
@@ -31,14 +31,14 @@ ZEPHIR_INIT_CLASS(Test_Oo_OoDynamicA) {
 
 PHP_METHOD(Test_Oo_OoDynamicA, getNew) {
 
-	int ZEPHIR_LAST_CALL_STATUS;
 	zend_class_entry *_1;
-	zval *className, *fullClassName, *_0 = NULL;
+	int ZEPHIR_LAST_CALL_STATUS;
+	zval *className = NULL, *fullClassName, *_0 = NULL;
 
 	ZEPHIR_MM_GROW();
 
-	ZEPHIR_INIT_VAR(className);
-	zephir_get_called_class(className TSRMLS_CC);
+	ZEPHIR_CALL_FUNCTION(&className, "get_called_class", NULL, 1);
+	zephir_check_call_status();
 	ZEPHIR_INIT_VAR(fullClassName);
 	ZEPHIR_CONCAT_SV(fullClassName, "\\", className);
 	zephir_fetch_safe_class(_0, fullClassName);

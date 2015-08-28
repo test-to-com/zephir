@@ -19,7 +19,6 @@
 #include "kernel/array.h"
 #include "kernel/hash.h"
 #include "kernel/iterator.h"
-#include "kernel/math.h"
 
 
 /**
@@ -660,14 +659,14 @@ PHP_METHOD(Test_Flow, testWhileNextTest) {
 	array_init(returnValue);
 	while (1) {
 		Z_SET_ISREF_P(variable);
-		ZEPHIR_CALL_FUNCTION(&_0, "next", &_1, 37, variable);
+		ZEPHIR_CALL_FUNCTION(&_0, "next", &_1, 64, variable);
 		Z_UNSET_ISREF_P(variable);
 		zephir_check_call_status();
 		if (!(zephir_is_true(_0))) {
 			break;
 		}
 		Z_SET_ISREF_P(variable);
-		ZEPHIR_CALL_FUNCTION(&_2, "current", &_3, 38, variable);
+		ZEPHIR_CALL_FUNCTION(&_2, "current", &_3, 65, variable);
 		Z_UNSET_ISREF_P(variable);
 		zephir_check_call_status();
 		zephir_array_append(&returnValue, _2, PH_SEPARATE, "test/flow.zep", 420);
@@ -691,12 +690,12 @@ PHP_METHOD(Test_Flow, testWhileDoNextTest) {
 
 	do {
 		Z_SET_ISREF_P(variable);
-		ZEPHIR_CALL_FUNCTION(&_0, "current", &_1, 38, variable);
+		ZEPHIR_CALL_FUNCTION(&_0, "current", &_1, 65, variable);
 		Z_UNSET_ISREF_P(variable);
 		zephir_check_call_status();
 		zephir_array_append(&returnValue, _0, PH_SEPARATE, "test/flow.zep", 430);
 		Z_SET_ISREF_P(variable);
-		ZEPHIR_CALL_FUNCTION(&_0, "next", &_2, 37, variable);
+		ZEPHIR_CALL_FUNCTION(&_0, "next", &_2, 64, variable);
 		Z_UNSET_ISREF_P(variable);
 		zephir_check_call_status();
 	} while (zephir_is_true(_0));
@@ -1804,7 +1803,8 @@ PHP_METHOD(Test_Flow, testFor39) {
 
 PHP_METHOD(Test_Flow, testFor40) {
 
-	int _1, _2;
+	zephir_fcall_cache_entry *_4 = NULL;
+	int _1, _2, ZEPHIR_LAST_CALL_STATUS;
 	zend_bool _0;
 	zval *a = NULL, *b, *_3 = NULL;
 
@@ -1827,8 +1827,8 @@ PHP_METHOD(Test_Flow, testFor40) {
 			}
 			ZEPHIR_INIT_NVAR(a);
 			ZVAL_LONG(a, _1);
-			ZEPHIR_INIT_NVAR(_3);
-			ZVAL_DOUBLE(_3, zephir_sqrt(a TSRMLS_CC));
+			ZEPHIR_CALL_FUNCTION(&_3, "sqrt", &_4, 13, a);
+			zephir_check_call_status();
 			ZEPHIR_ADD_ASSIGN(b, _3);
 		}
 	}
@@ -2047,10 +2047,12 @@ PHP_METHOD(Test_Flow, testSwitch12) {
 
 PHP_METHOD(Test_Flow, testSwitch13) {
 
-	zval *a_param = NULL, _0, _1;
-	long a, _2;
+	int ZEPHIR_LAST_CALL_STATUS;
+	zval *a_param = NULL, _0, _1, *_2 = NULL;
+	long a;
 
-	zephir_fetch_params(0, 1, 0, &a_param);
+	ZEPHIR_MM_GROW();
+	zephir_fetch_params(1, 1, 0, &a_param);
 
 	a = zephir_get_intval(a_param);
 
@@ -2059,14 +2061,16 @@ PHP_METHOD(Test_Flow, testSwitch13) {
 	ZVAL_LONG(&_0, 1);
 	ZEPHIR_SINIT_VAR(_1);
 	ZVAL_LONG(&_1, 2);
+	ZEPHIR_CALL_FUNCTION(&_2, "mt_rand", NULL, 50, &_0, &_1);
+	zephir_check_call_status();
 	do {
-		_2 = zephir_mt_rand(zephir_get_intval(&_0), zephir_get_intval(&_1) TSRMLS_CC);
-		if (_2 == 100) {
-			RETURN_LONG(1);
+		if (ZEPHIR_IS_LONG(_2, 100)) {
+			RETURN_MM_LONG(1);
 		}
-		RETURN_LONG(0);
+		RETURN_MM_LONG(0);
 	} while(0);
 
+	ZEPHIR_MM_RESTORE();
 
 }
 

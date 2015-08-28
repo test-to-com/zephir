@@ -1,3 +1,7 @@
+# Standard Ignores
+*~
+
+# Other
 .DS_Store
 .idea/
 parser/lemon
@@ -70,3 +74,9 @@ runtime/run-tests.php
 runtime/a.zep
 runtime/index.php
 runtime/parser.out
+
+# Ignore Test Directory for PHALCON
+
+cphalcon/
+ext-save/
+

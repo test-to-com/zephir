@@ -12,8 +12,7 @@
 #include <Zend/zend_interfaces.h>
 
 #include "kernel/main.h"
-#include "kernel/operators.h"
-#include "kernel/string.h"
+#include "kernel/fcall.h"
 #include "kernel/memory.h"
 
 
@@ -27,27 +26,33 @@ ZEPHIR_INIT_CLASS(Test_Optimizers_Substr) {
 
 PHP_METHOD(Test_Optimizers_Substr, testTwoArguments) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval *str, *start;
 
-	zephir_fetch_params(0, 2, 0, &str, &start);
+	ZEPHIR_MM_GROW();
+	zephir_fetch_params(1, 2, 0, &str, &start);
 
 
 
-	zephir_substr(return_value, str, zephir_get_intval(start), 0, ZEPHIR_SUBSTR_NO_LENGTH);
-	return;
+	ZEPHIR_RETURN_CALL_FUNCTION("substr", NULL, 48, str, start);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Optimizers_Substr, testThreeArguments) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval *str, *start, *offset;
 
-	zephir_fetch_params(0, 3, 0, &str, &start, &offset);
+	ZEPHIR_MM_GROW();
+	zephir_fetch_params(1, 3, 0, &str, &start, &offset);
 
 
 
-	zephir_substr(return_value, str, zephir_get_intval(start), zephir_get_intval(offset), 0);
-	return;
+	ZEPHIR_RETURN_CALL_FUNCTION("substr", NULL, 48, str, start, offset);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 

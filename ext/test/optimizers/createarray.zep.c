@@ -12,7 +12,7 @@
 #include <Zend/zend_interfaces.h>
 
 #include "kernel/main.h"
-#include "kernel/array.h"
+#include "kernel/fcall.h"
 #include "kernel/memory.h"
 #include "kernel/operators.h"
 
@@ -29,26 +29,30 @@ PHP_METHOD(Test_Optimizers_CreateArray, createNoSize) {
 
 	int ZEPHIR_LAST_CALL_STATUS;
 
+	ZEPHIR_MM_GROW();
 
-	zephir_create_array(return_value, 0, 1 TSRMLS_CC);
-	return;
+	ZEPHIR_RETURN_CALL_FUNCTION("create_array", NULL, 0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Optimizers_CreateArray, createSize) {
 
-	zval *n_param = NULL, _0;
+	zval *n_param = NULL, *_0;
 	int n, ZEPHIR_LAST_CALL_STATUS;
 
-	zephir_fetch_params(0, 1, 0, &n_param);
+	ZEPHIR_MM_GROW();
+	zephir_fetch_params(1, 1, 0, &n_param);
 
 	n = zephir_get_intval(n_param);
 
 
-	ZEPHIR_SINIT_VAR(_0);
-	ZVAL_LONG(&_0, n);
-	zephir_create_array(return_value, zephir_get_intval(&_0), 1 TSRMLS_CC);
-	return;
+	ZEPHIR_INIT_VAR(_0);
+	ZVAL_LONG(_0, n);
+	ZEPHIR_RETURN_CALL_FUNCTION("create_array", NULL, 0, _0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 

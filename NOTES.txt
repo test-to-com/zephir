@@ -1,0 +1,241 @@
+** EXAMPLE RESULT OF COMPILATION FOR ORIGINAL ZEPHIR **
+
+Warning: Variable "temp3" assigned but not used in Test\Assign::testPropertyArray12 in /home/pj/WEBPROJECTS/original/zephir/test/assign.zep on 583 [unused-variable]
+
+          let temp3 = count(this->myArray);
+        ----------------------------------^
+
+
+Warning: Variable "temp3" assigned but not used in Test\Assign::testPropertyArray13 in /home/pj/WEBPROJECTS/original/zephir/test/assign.zep on 600 [unused-variable]
+
+          let temp3 = count(this->myArray);
+        ----------------------------------^
+
+
+Warning: Variable "elements" assigned but not used in Test\Assign::testConstantKeyAssign in /home/pj/WEBPROJECTS/original/zephir/test/assign.zep on 819 [unused-variable]
+
+          let elements = ["abc": 1, ABDAY_1: DAY_1, ABDAY_2: DAY_2];
+        -----------------------------------------------------------^
+
+
+Warning: ANNOTATION_REGEX in /home/pj/WEBPROJECTS/original/zephir/test/constants.zep on 38 [nonexistent-constant]
+
+         protected propertyC7 = self::ANNOTATION_REGEX {get};
+        -----------------------------------------------^
+
+
+Warning: PARAMETER_REGEX in /home/pj/WEBPROJECTS/original/zephir/test/constants.zep on 39 [nonexistent-constant]
+
+         protected propertyC8 = self::PARAMETER_REGEX {get};
+        ----------------------------------------------^
+
+
+Warning: Magic constant '__DIR__' is not supported in /home/pj/WEBPROJECTS/original/zephir/test/constants.zep on 88 [not-supported-magic-constant]
+
+             return __DIR__;
+        -------------------^
+
+
+Warning: Unreachable code in /home/pj/WEBPROJECTS/original/zephir/test/fannkuch.zep on 36 [unreachable-code]
+
+           }
+        ---^
+
+
+Warning: Variable "seqi" declared but not used in Test\Fasta::fastaRepeat in /home/pj/WEBPROJECTS/original/zephir/test/fasta.zep on 9 [unused-variable]
+
+          var seqi = 0, len, i, j, k, l, block, str, lines;
+        --------------^
+
+
+Warning: Variable "iub" assigned but not used in Test\Fasta::main in /home/pj/WEBPROJECTS/original/zephir/test/fasta.zep on 65 [unused-variable]
+
+             "M": 0.02, "N": 0.02, "R": 0.02, "S": 0.02, "V": 0.02, "W": 0.02, "Y": 0.02 ];
+        ----------------------------------------------------------------------------------^
+
+
+Warning: Variable "homoSap" assigned but not used in Test\Fasta::main in /home/pj/WEBPROJECTS/original/zephir/test/fasta.zep on 69 [unused-variable]
+
+          ];
+        ---^
+
+
+Warning: Variable "c" assigned but not used in Test\FetchTest::testFetchArray1 in /home/pj/WEBPROJECTS/original/zephir/test/fetchtest.zep on 14 [unused-variable]
+
+          return fetch c, a[b];
+        ----------------------^
+
+
+Warning: Variable "c" assigned but not used in Test\FetchTest::testFetchArray2 in /home/pj/WEBPROJECTS/original/zephir/test/fetchtest.zep on 20 [unused-variable]
+
+          return fetch c, a[b];
+        ----------------------^
+
+
+Warning: Variable "c" assigned but not used in Test\FetchTest::testFetchArray3 in /home/pj/WEBPROJECTS/original/zephir/test/fetchtest.zep on 26 [unused-variable]
+
+          return fetch c, a[b];
+        ----------------------^
+
+
+Warning: Variable "c" assigned but not used in Test\FetchTest::testFetchObject1 in /home/pj/WEBPROJECTS/original/zephir/test/fetchtest.zep on 32 [unused-variable]
+
+          return fetch c, a->{b};
+        ------------------------^
+
+
+Warning: Unreachable code in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 26 [unreachable-code]
+
+                    return 1;
+        --------------------^
+
+
+Warning: Unreachable code in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 46 [unreachable-code]
+
+                    return 1;
+        --------------------^
+
+
+Warning: Unreachable code in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 66 [unreachable-code]
+
+                    return 1;
+        --------------------^
+
+
+Warning: Unreachable code in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 78 [unreachable-code]
+
+                    return 0;
+        --------------------^
+
+
+Warning: Unreachable code in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 87 [unreachable-code]
+
+                    return 1;
+        --------------------^
+
+
+Warning: Unreachable code in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 130 [unreachable-code]
+
+                    return -3;
+        ---------------------^
+
+
+Warning: Unreachable code in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 153 [unreachable-code]
+
+                    return 0;
+        --------------------^
+
+
+Warning: Possible attempt to decrement non-numeric dynamic variable in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 394 [non-valid-decrement]
+
+                    let b--;
+        -------------------^
+
+
+Warning: Possible attempt to decrement non-numeric dynamic variable in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 404 [non-valid-decrement]
+
+                    let b--;
+        -------------------^
+
+
+Warning: Variable "v" assigned but not used in Test\Flow::testFor2 in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 450 [unused-variable]
+
+                for k, v in b {
+        ----------------------^
+
+
+Warning: Unreachable code in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 955 [unreachable-code]
+
+                    echo "hello true";
+        -----------------------------^
+
+
+Warning: Unreachable code in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 959 [unreachable-code]
+
+                    echo "hello true";
+        -----------------------------^
+
+
+Warning: Unreachable code in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 963 [unreachable-code]
+
+                    echo "hello true";
+        -----------------------------^
+
+
+Warning: Unreachable code in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 983 [unreachable-code]
+
+                    echo "hello false";
+        ------------------------------^
+
+
+Warning: Unreachable code in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 989 [unreachable-code]
+
+                    echo "hello false";
+        ------------------------------^
+
+
+Warning: Unreachable code in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 995 [unreachable-code]
+
+                    echo "hello false";
+        ------------------------------^
+
+
+Warning: Variable 'a' was assigned for the first time in conditional branch, consider initialize it at its declaration in /home/pj/WEBPROJECTS/original/zephir/test/flow.zep on 1022 [conditional-initialization]
+
+                return a;
+        ----------------^
+
+
+Warning: Variable "c" assigned but not used in Test\NativeArray::testMultipleArrayUpdate13 in /home/pj/WEBPROJECTS/original/zephir/test/nativearray.zep on 541 [unused-variable]
+
+           c = b,
+        --------^
+
+
+Warning: Unreachable code in /home/pj/WEBPROJECTS/original/zephir/test/returns.zep on 30 [unreachable-code]
+
+           return (int)0;
+        ----------------^
+
+
+Warning: Function "create_string" does not exist at compile time in /home/pj/WEBPROJECTS/original/zephir/test/typeinstances.zep on 12 [nonexistent-function]
+
+          return new string(24);
+        -----------------------^
+
+
+Warning: Function "create_string" does not exist at compile time in /home/pj/WEBPROJECTS/original/zephir/test/typeinstances.zep on 17 [nonexistent-function]
+
+          return new string(-24);
+        ------------------------^
+
+
+Warning: Function "create_string" does not exist at compile time in /home/pj/WEBPROJECTS/original/zephir/test/typeinstances.zep on 22 [nonexistent-function]
+
+          return new string(0);
+        ----------------------^
+
+
+Warning: Class "Oo\OoConstruct" does not exist at compile time in /home/pj/WEBPROJECTS/original/zephir/test/usetest.zep on 26 [nonexistent-class]
+
+          return new OoConstruct();
+        --------------------------^
+
+
+Warning: Class "Strings" does not exist at compile time in /home/pj/WEBPROJECTS/original/zephir/test/usetest.zep on 31 [nonexistent-class]
+
+          return new TestStrings();
+        --------------------------^
+
+
+Warning: Class "Oo\OoConstruct" does not exist at compile time in /home/pj/WEBPROJECTS/original/zephir/test/usetest.zep on 36 [nonexistent-class]
+
+          return new NsAlias\OoConstruct();
+        ----------------------------------^
+
+
+Copying new kernel files...
+Preparing for PHP compilation...
+Preparing configuration file...
+Compiling...
+pj@PJLINUX:~/WEBPROJECTS/original/zephir$ 

@@ -16,6 +16,7 @@
 #include "kernel/memory.h"
 #include "kernel/array.h"
 #include "kernel/operators.h"
+#include "kernel/fcall.h"
 
 
 /**
@@ -1071,7 +1072,8 @@ PHP_METHOD(Test_Assign, testPropertyArray11) {
 
 PHP_METHOD(Test_Assign, testPropertyArray12) {
 
-	zval *index, *temp1, *temp2, *temp3, *_0, *_1, *_2, *_3, *_4, *_5, *_6;
+	int ZEPHIR_LAST_CALL_STATUS;
+	zval *index, *temp1, *temp2, *temp3 = NULL, *_0, *_1, *_2, *_3, *_4, *_5, *_6;
 
 	ZEPHIR_MM_GROW();
 	zephir_fetch_params(1, 1, 0, &index);
@@ -1102,15 +1104,16 @@ PHP_METHOD(Test_Assign, testPropertyArray12) {
 	array_init(_5);
 	zephir_update_property_array_multi(this_ptr, SL("myArray"), &_5 TSRMLS_CC, SL("zza"), 2, index, index);
 	_6 = zephir_fetch_nproperty_this(this_ptr, SL("myArray"), PH_NOISY_CC);
-	ZEPHIR_INIT_VAR(temp3);
-	ZVAL_LONG(temp3, zephir_fast_count_int(_6 TSRMLS_CC));
+	ZEPHIR_CALL_FUNCTION(&temp3, "count", NULL, 3, _6);
+	zephir_check_call_status();
 	RETURN_MM_MEMBER(this_ptr, "myArray");
 
 }
 
 PHP_METHOD(Test_Assign, testPropertyArray13) {
 
-	zval *index, *temp1, *temp2, *temp3, *_0, *_1, *_2, *_3, *_4, *_5, *_6;
+	int ZEPHIR_LAST_CALL_STATUS;
+	zval *index, *temp1, *temp2, *temp3 = NULL, *_0, *_1, *_2, *_3, *_4, *_5, *_6;
 
 	ZEPHIR_MM_GROW();
 	zephir_fetch_params(1, 1, 0, &index);
@@ -1141,8 +1144,8 @@ PHP_METHOD(Test_Assign, testPropertyArray13) {
 	array_init(_5);
 	zephir_update_property_array_multi(this_ptr, SL("myArray"), &_5 TSRMLS_CC, SL("za"), 1, index);
 	_6 = zephir_fetch_nproperty_this(this_ptr, SL("myArray"), PH_NOISY_CC);
-	ZEPHIR_INIT_VAR(temp3);
-	ZVAL_LONG(temp3, zephir_fast_count_int(_6 TSRMLS_CC));
+	ZEPHIR_CALL_FUNCTION(&temp3, "count", NULL, 3, _6);
+	zephir_check_call_status();
 	RETURN_MM_MEMBER(this_ptr, "myArray");
 
 }

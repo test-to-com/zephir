@@ -41,7 +41,7 @@ PHP_METHOD(Test_Functional, map1) {
 	ZEPHIR_INIT_VAR(_0);
 	ZEPHIR_INIT_NVAR(_0);
 	zephir_create_closure_ex(_0, NULL, test_8__closure_ce, SS("__invoke") TSRMLS_CC);
-	ZEPHIR_CALL_FUNCTION(&_1, "array_map", NULL, 3, _0, a);
+	ZEPHIR_CALL_FUNCTION(&_1, "array_map", NULL, 6, _0, a);
 	zephir_check_call_status();
 	RETURN_CCTOR(_1);
 
@@ -59,7 +59,7 @@ PHP_METHOD(Test_Functional, map2) {
 	zephir_get_arrval(a, a_param);
 
 
-	ZEPHIR_CALL_FUNCTION(&_0, "array_map", NULL, 3, b, a);
+	ZEPHIR_CALL_FUNCTION(&_0, "array_map", NULL, 6, b, a);
 	zephir_check_call_status();
 	RETURN_CCTOR(_0);
 

@@ -12,10 +12,9 @@
 #include <Zend/zend_interfaces.h>
 
 #include "kernel/main.h"
-#include "kernel/string.h"
 #include "kernel/memory.h"
-#include "kernel/operators.h"
 #include "kernel/fcall.h"
+#include "kernel/operators.h"
 
 
 /**
@@ -31,12 +30,16 @@ ZEPHIR_INIT_CLASS(Test_McallInternal) {
 
 static void zep_Test_McallInternal_a(int ht, zval *return_value, zval **return_value_ptr, zval *this_ptr, int return_value_used TSRMLS_DC) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval _0;
 
+	ZEPHIR_MM_GROW();
 
 	ZEPHIR_SINIT_VAR(_0);
 	ZVAL_STRING(&_0, "hello", 0);
-	RETURN_LONG(zephir_fast_strlen_ev(&_0));
+	ZEPHIR_RETURN_CALL_FUNCTION("strlen", NULL, 21, &_0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
@@ -70,12 +73,16 @@ static void zep_Test_McallInternal_c(int ht, zval *return_value, zval **return_v
 
 PHP_METHOD(Test_McallInternal, e) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval _0;
 
+	ZEPHIR_MM_GROW();
 
 	ZEPHIR_SINIT_VAR(_0);
 	ZVAL_STRING(&_0, "hello", 0);
-	RETURN_LONG(zephir_fast_strlen_ev(&_0));
+	ZEPHIR_RETURN_CALL_FUNCTION("strlen", NULL, 21, &_0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 

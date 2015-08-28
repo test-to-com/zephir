@@ -2,3 +2,7 @@
 	path = json-c
 	url = https://github.com/phalcon/json-c.git
 	branch = master
+
+[submodule "GetOptionKit"]
+	path = vendor/getoptionkit
+	url = https://github.com/c9s/GetOptionKit.git

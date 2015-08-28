@@ -15,7 +15,7 @@
 #include "kernel/array.h"
 #include "kernel/operators.h"
 #include "kernel/memory.h"
-#include "kernel/string.h"
+#include "kernel/fcall.h"
 
 
 /**
@@ -164,26 +164,34 @@ PHP_METHOD(Test_Logical, testMixed1) {
 
 PHP_METHOD(Test_Logical, testMixed2) {
 
-	zend_bool _0, _1;
-	zval *match, *minLength, *_2;
+	zend_bool _1, _3;
+	int ZEPHIR_LAST_CALL_STATUS;
+	zval *match, *minLength, *_0 = NULL, *_2 = NULL, *_4, *_5 = NULL;
 
-	zephir_fetch_params(0, 2, 0, &match, &minLength);
+	ZEPHIR_MM_GROW();
+	zephir_fetch_params(1, 2, 0, &match, &minLength);
 
 
 
-	_0 = Z_TYPE_P(match) == IS_ARRAY;
-	if (_0) {
-		_0 = zephir_fast_count_int(match TSRMLS_CC) == 2;
-	}
-	_1 = _0;
+	ZEPHIR_CALL_FUNCTION(&_0, "is_array", NULL, 68, match);
+	zephir_check_call_status();
+	_1 = zephir_is_true(_0);
 	if (_1) {
-		zephir_array_fetch_long(&_2, match, 0, PH_NOISY | PH_READONLY, "test/logical.zep", 65 TSRMLS_CC);
-		_1 = ZEPHIR_LE_LONG(minLength, zephir_fast_strlen_ev(_2));
+		ZEPHIR_CALL_FUNCTION(&_2, "count", NULL, 3, match);
+		zephir_check_call_status();
+		_1 = ZEPHIR_IS_LONG(_2, 2);
 	}
-	if (_1) {
-		RETURN_BOOL(1);
+	_3 = _1;
+	if (_3) {
+		zephir_array_fetch_long(&_4, match, 0, PH_NOISY | PH_READONLY, "test/logical.zep", 65 TSRMLS_CC);
+		ZEPHIR_CALL_FUNCTION(&_5, "strlen", NULL, 21, _4);
+		zephir_check_call_status();
+		_3 = ZEPHIR_GE(_5, minLength);
 	}
-	RETURN_BOOL(0);
+	if (_3) {
+		RETURN_MM_BOOL(1);
+	}
+	RETURN_MM_BOOL(0);
 
 }
 

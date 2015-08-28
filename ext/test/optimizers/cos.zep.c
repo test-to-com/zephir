@@ -13,9 +13,8 @@
 
 #include "kernel/main.h"
 #include "kernel/memory.h"
-#include "math.h"
+#include "kernel/fcall.h"
 #include "kernel/operators.h"
-#include "kernel/math.h"
 
 
 ZEPHIR_INIT_CLASS(Test_Optimizers_Cos) {
@@ -28,58 +27,68 @@ ZEPHIR_INIT_CLASS(Test_Optimizers_Cos) {
 
 PHP_METHOD(Test_Optimizers_Cos, testInt) {
 
-	zval *_0;
-	int a = 4;
+	zval _0;
+	int a = 4, ZEPHIR_LAST_CALL_STATUS;
 
 	ZEPHIR_MM_GROW();
 
-	ZEPHIR_INIT_VAR(_0);
-	ZVAL_LONG(_0, a);
-	RETURN_MM_DOUBLE(cos(a));
+	ZEPHIR_SINIT_VAR(_0);
+	ZVAL_LONG(&_0, a);
+	ZEPHIR_RETURN_CALL_FUNCTION("cos", NULL, 15, &_0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Optimizers_Cos, testVar) {
 
-	zval *_0;
-	int a = 4;
+	zval _0;
+	int a = 4, ZEPHIR_LAST_CALL_STATUS;
 
 	ZEPHIR_MM_GROW();
 
-	ZEPHIR_INIT_VAR(_0);
-	ZVAL_LONG(_0, a);
-	RETURN_MM_DOUBLE(cos(a));
+	ZEPHIR_SINIT_VAR(_0);
+	ZVAL_LONG(&_0, a);
+	ZEPHIR_RETURN_CALL_FUNCTION("cos", NULL, 15, &_0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Optimizers_Cos, testIntValue1) {
 
-	zval *_0;
+	int ZEPHIR_LAST_CALL_STATUS;
+	zval _0;
 
 	ZEPHIR_MM_GROW();
 
-	ZEPHIR_INIT_VAR(_0);
-	ZVAL_LONG(_0, 4);
-	RETURN_MM_DOUBLE(cos(4));
+	ZEPHIR_SINIT_VAR(_0);
+	ZVAL_LONG(&_0, 4);
+	ZEPHIR_RETURN_CALL_FUNCTION("cos", NULL, 15, &_0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Optimizers_Cos, testIntValue2) {
 
-	zval *_0;
+	int ZEPHIR_LAST_CALL_STATUS;
+	zval _0;
 
 	ZEPHIR_MM_GROW();
 
-	ZEPHIR_INIT_VAR(_0);
-	ZVAL_LONG(_0, 16);
-	RETURN_MM_DOUBLE(cos(16));
+	ZEPHIR_SINIT_VAR(_0);
+	ZVAL_LONG(&_0, 16);
+	ZEPHIR_RETURN_CALL_FUNCTION("cos", NULL, 15, &_0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Optimizers_Cos, testIntParameter) {
 
-	zval *a_param = NULL, *_0;
-	int a;
+	zval *a_param = NULL, _0;
+	int a, ZEPHIR_LAST_CALL_STATUS;
 
 	ZEPHIR_MM_GROW();
 	zephir_fetch_params(1, 1, 0, &a_param);
@@ -87,21 +96,27 @@ PHP_METHOD(Test_Optimizers_Cos, testIntParameter) {
 	a = zephir_get_intval(a_param);
 
 
-	ZEPHIR_INIT_VAR(_0);
-	ZVAL_LONG(_0, a);
-	RETURN_MM_DOUBLE(cos(a));
+	ZEPHIR_SINIT_VAR(_0);
+	ZVAL_LONG(&_0, a);
+	ZEPHIR_RETURN_CALL_FUNCTION("cos", NULL, 15, &_0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Optimizers_Cos, testVarParameter) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval *a;
 
-	zephir_fetch_params(0, 1, 0, &a);
+	ZEPHIR_MM_GROW();
+	zephir_fetch_params(1, 1, 0, &a);
 
 
 
-	RETURN_DOUBLE(zephir_cos(a TSRMLS_CC));
+	ZEPHIR_RETURN_CALL_FUNCTION("cos", NULL, 15, a);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 

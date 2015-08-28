@@ -13,11 +13,8 @@
 
 #include "kernel/main.h"
 #include "kernel/memory.h"
-#include "kernel/string.h"
-#include "kernel/math.h"
-#include "kernel/operators.h"
 #include "kernel/fcall.h"
-#include "kernel/file.h"
+#include "kernel/operators.h"
 #include "kernel/array.h"
 
 
@@ -34,29 +31,37 @@ ZEPHIR_INIT_CLASS(Test_Fcall) {
 
 PHP_METHOD(Test_Fcall, testCall1) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval _0, _1;
 
+	ZEPHIR_MM_GROW();
 
 	ZEPHIR_SINIT_VAR(_0);
 	ZVAL_STRING(&_0, "hello", 0);
 	ZEPHIR_SINIT_VAR(_1);
 	ZVAL_STRING(&_1, "h", 0);
-	zephir_fast_strpos(return_value, &_0, &_1, 0 );
-	return;
+	ZEPHIR_RETURN_CALL_FUNCTION("strpos", NULL, 22, &_0, &_1);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Fcall, testCall2) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
+	zephir_fcall_cache_entry *_2 = NULL;
 	zval _0 = zval_used_for_init, _1 = zval_used_for_init;
 
+	ZEPHIR_MM_GROW();
 
 	while (1) {
 		ZEPHIR_SINIT_NVAR(_0);
 		ZVAL_LONG(&_0, 0);
 		ZEPHIR_SINIT_NVAR(_1);
 		ZVAL_LONG(&_1, 100);
-		RETURN_LONG(zephir_mt_rand(zephir_get_intval(&_0), zephir_get_intval(&_1) TSRMLS_CC));
+		ZEPHIR_RETURN_CALL_FUNCTION("mt_rand", &_2, 50, &_0, &_1);
+		zephir_check_call_status();
+		RETURN_MM();
 	}
 
 }
@@ -64,7 +69,7 @@ PHP_METHOD(Test_Fcall, testCall2) {
 PHP_METHOD(Test_Fcall, testCall3) {
 
 	int ZEPHIR_LAST_CALL_STATUS;
-	zephir_fcall_cache_entry *_2 = NULL, *_3 = NULL;
+	zephir_fcall_cache_entry *_2 = NULL, *_3 = NULL, *_4 = NULL, *_5 = NULL;
 	zval *handle = NULL, *handle2 = NULL, *buffer = NULL, _0 = zval_used_for_init, _1 = zval_used_for_init;
 
 	ZEPHIR_MM_GROW();
@@ -73,27 +78,30 @@ PHP_METHOD(Test_Fcall, testCall3) {
 	ZVAL_STRING(&_0, "inputfile.txt", 0);
 	ZEPHIR_SINIT_VAR(_1);
 	ZVAL_STRING(&_1, "r", 0);
-	ZEPHIR_CALL_FUNCTION(&handle, "fopen", &_2, 26, &_0, &_1);
+	ZEPHIR_CALL_FUNCTION(&handle, "fopen", &_2, 51, &_0, &_1);
 	zephir_check_call_status();
 	ZEPHIR_SINIT_NVAR(_0);
 	ZVAL_STRING(&_0, "outputfile.txt", 0);
 	ZEPHIR_SINIT_NVAR(_1);
 	ZVAL_STRING(&_1, "w", 0);
-	ZEPHIR_CALL_FUNCTION(&handle2, "fopen", &_2, 26, &_0, &_1);
+	ZEPHIR_CALL_FUNCTION(&handle2, "fopen", &_2, 51, &_0, &_1);
 	zephir_check_call_status();
 	if (zephir_is_true(handle)) {
 		while (1) {
 			ZEPHIR_SINIT_NVAR(_0);
 			ZVAL_LONG(&_0, 4096);
-			ZEPHIR_CALL_FUNCTION(&buffer, "fgets", &_3, 27, handle, &_0);
+			ZEPHIR_CALL_FUNCTION(&buffer, "fgets", &_3, 52, handle, &_0);
 			zephir_check_call_status();
 			if (ZEPHIR_IS_FALSE_IDENTICAL(buffer)) {
 				break;
 			}
-			zephir_fwrite(NULL, handle2, buffer TSRMLS_CC);
+			ZEPHIR_CALL_FUNCTION(NULL, "fwrite", &_4, 53, handle2, buffer);
+			zephir_check_call_status();
 		}
-		zephir_fclose(handle TSRMLS_CC);
-		zephir_fclose(handle2 TSRMLS_CC);
+		ZEPHIR_CALL_FUNCTION(NULL, "fclose", &_5, 54, handle);
+		zephir_check_call_status();
+		ZEPHIR_CALL_FUNCTION(NULL, "fclose", &_5, 54, handle2);
+		zephir_check_call_status();
 	}
 	ZEPHIR_MM_RESTORE();
 
@@ -102,7 +110,7 @@ PHP_METHOD(Test_Fcall, testCall3) {
 PHP_METHOD(Test_Fcall, testCall4) {
 
 	int ZEPHIR_LAST_CALL_STATUS;
-	zephir_fcall_cache_entry *_2 = NULL, *_3 = NULL;
+	zephir_fcall_cache_entry *_2 = NULL, *_3 = NULL, *_4 = NULL, *_5 = NULL;
 	zval *handle = NULL, *handle2 = NULL, *buffer = NULL, _0 = zval_used_for_init, _1 = zval_used_for_init;
 
 	ZEPHIR_MM_GROW();
@@ -111,27 +119,30 @@ PHP_METHOD(Test_Fcall, testCall4) {
 	ZVAL_STRING(&_0, "r", 0);
 	ZEPHIR_SINIT_VAR(_1);
 	ZVAL_STRING(&_1, "inputfile.txt", 0);
-	ZEPHIR_CALL_FUNCTION(&handle, "fopen", &_2, 26, &_0, &_1);
+	ZEPHIR_CALL_FUNCTION(&handle, "fopen", &_2, 51, &_0, &_1);
 	zephir_check_call_status();
 	ZEPHIR_SINIT_NVAR(_0);
 	ZVAL_STRING(&_0, "outputfile.txt", 0);
 	ZEPHIR_SINIT_NVAR(_1);
 	ZVAL_STRING(&_1, "w", 0);
-	ZEPHIR_CALL_FUNCTION(&handle2, "fopen", &_2, 26, &_0, &_1);
+	ZEPHIR_CALL_FUNCTION(&handle2, "fopen", &_2, 51, &_0, &_1);
 	zephir_check_call_status();
 	if (zephir_is_true(handle)) {
 		while (1) {
 			ZEPHIR_SINIT_NVAR(_0);
 			ZVAL_LONG(&_0, 4096);
-			ZEPHIR_CALL_FUNCTION(&buffer, "fgets", &_3, 27, handle, &_0);
+			ZEPHIR_CALL_FUNCTION(&buffer, "fgets", &_3, 52, handle, &_0);
 			zephir_check_call_status();
 			if (ZEPHIR_IS_FALSE_IDENTICAL(buffer)) {
 				break;
 			}
-			zephir_fwrite(NULL, handle2, buffer TSRMLS_CC);
+			ZEPHIR_CALL_FUNCTION(NULL, "fwrite", &_4, 53, handle2, buffer);
+			zephir_check_call_status();
 		}
-		zephir_fclose(handle TSRMLS_CC);
-		zephir_fclose(handle2 TSRMLS_CC);
+		ZEPHIR_CALL_FUNCTION(NULL, "fclose", &_5, 54, handle);
+		zephir_check_call_status();
+		ZEPHIR_CALL_FUNCTION(NULL, "fclose", &_5, 54, handle2);
+		zephir_check_call_status();
 	}
 	ZEPHIR_MM_RESTORE();
 
@@ -147,7 +158,7 @@ PHP_METHOD(Test_Fcall, testCall5) {
 
 
 
-	ZEPHIR_RETURN_CALL_FUNCTION("str_repeat", NULL, 17, a, b);
+	ZEPHIR_RETURN_CALL_FUNCTION("str_repeat", NULL, 35, a, b);
 	zephir_check_call_status();
 	RETURN_MM();
 
@@ -159,7 +170,7 @@ PHP_METHOD(Test_Fcall, testCall6) {
 
 	ZEPHIR_MM_GROW();
 
-	ZEPHIR_RETURN_CALL_FUNCTION("rand", NULL, 28);
+	ZEPHIR_RETURN_CALL_FUNCTION("rand", NULL, 55);
 	zephir_check_call_status();
 	RETURN_MM();
 
@@ -171,7 +182,7 @@ PHP_METHOD(Test_Fcall, testCall7) {
 
 	ZEPHIR_MM_GROW();
 
-	ZEPHIR_CALL_FUNCTION(NULL, "memory_get_usage", NULL, 29);
+	ZEPHIR_CALL_FUNCTION(NULL, "memory_get_usage", NULL, 56);
 	zephir_check_call_status();
 	ZEPHIR_MM_RESTORE();
 
@@ -206,7 +217,7 @@ PHP_METHOD(Test_Fcall, testCall8) {
 
 
 
-	ZEPHIR_CALL_FUNCTION(&x, "str_repeat", NULL, 17, a, b);
+	ZEPHIR_CALL_FUNCTION(&x, "str_repeat", NULL, 35, a, b);
 	zephir_check_call_status();
 	RETURN_CCTOR(x);
 
@@ -235,8 +246,16 @@ PHP_METHOD(Test_Fcall, testCall1FromVar) {
 
 PHP_METHOD(Test_Fcall, testStrtokFalse) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
+	zval _0;
 
-	RETURN_BOOL(0);
+	ZEPHIR_MM_GROW();
+
+	ZEPHIR_SINIT_VAR(_0);
+	ZVAL_STRING(&_0, "/", 0);
+	ZEPHIR_RETURN_CALL_FUNCTION("strtok", NULL, 57, &_0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
@@ -252,7 +271,7 @@ PHP_METHOD(Test_Fcall, testStrtokVarBySlash) {
 
 	ZEPHIR_SINIT_VAR(_0);
 	ZVAL_STRING(&_0, "/", 0);
-	ZEPHIR_RETURN_CALL_FUNCTION("strtok", NULL, 30, value, &_0);
+	ZEPHIR_RETURN_CALL_FUNCTION("strtok", NULL, 57, value, &_0);
 	zephir_check_call_status();
 	RETURN_MM();
 
@@ -268,7 +287,7 @@ PHP_METHOD(Test_Fcall, testFunctionGetArgs) {
 
 
 
-	ZEPHIR_RETURN_CALL_FUNCTION("func_get_args", NULL, 31);
+	ZEPHIR_RETURN_CALL_FUNCTION("func_get_args", NULL, 58);
 	zephir_check_call_status();
 	RETURN_MM();
 
@@ -288,7 +307,7 @@ PHP_METHOD(Test_Fcall, testArrayFill) {
 	ZVAL_LONG(_1, 5);
 	ZEPHIR_INIT_VAR(_2);
 	ZVAL_STRING(_2, "?", ZEPHIR_TEMP_PARAM_COPY);
-	ZEPHIR_CALL_FUNCTION(&v1, "array_fill", &_3, 32, _0, _1, _2);
+	ZEPHIR_CALL_FUNCTION(&v1, "array_fill", &_3, 59, _0, _1, _2);
 	zephir_check_temp_parameter(_2);
 	zephir_check_call_status();
 	ZEPHIR_INIT_NVAR(_0);
@@ -297,7 +316,7 @@ PHP_METHOD(Test_Fcall, testArrayFill) {
 	ZVAL_LONG(_1, 6);
 	ZEPHIR_INIT_NVAR(_2);
 	ZVAL_STRING(_2, "?", ZEPHIR_TEMP_PARAM_COPY);
-	ZEPHIR_CALL_FUNCTION(&v2, "array_fill", &_3, 32, _0, _1, _2);
+	ZEPHIR_CALL_FUNCTION(&v2, "array_fill", &_3, 59, _0, _1, _2);
 	zephir_check_temp_parameter(_2);
 	zephir_check_call_status();
 	zephir_create_array(return_value, 2, 0 TSRMLS_CC);
@@ -322,7 +341,7 @@ PHP_FUNCTION(g_test_zephir_global_method_test) {
 		ZEPHIR_CALL_METHOD(NULL, _0, "__construct", NULL, 0);
 		zephir_check_call_status();
 	}
-	ZEPHIR_RETURN_CALL_METHOD(_0, "teststrtokvarbyslash", NULL, 33, str);
+	ZEPHIR_RETURN_CALL_METHOD(_0, "teststrtokvarbyslash", NULL, 60, str);
 	zephir_check_call_status();
 	RETURN_MM();
 
@@ -345,7 +364,7 @@ PHP_FUNCTION(f_Test_zephir_namespaced_method_test) {
 	}
 	ZEPHIR_INIT_VAR(_1);
 	ZVAL_LONG(_1, 5);
-	ZEPHIR_RETURN_CALL_METHOD(_0, "testcall5", NULL, 34, str, _1);
+	ZEPHIR_RETURN_CALL_METHOD(_0, "testcall5", NULL, 61, str, _1);
 	zephir_check_call_status();
 	RETURN_MM();
 

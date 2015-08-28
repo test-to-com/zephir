@@ -14,8 +14,7 @@
 #include "kernel/main.h"
 #include "kernel/memory.h"
 #include "kernel/array.h"
-#include "kernel/string.h"
-#include "kernel/operators.h"
+#include "kernel/fcall.h"
 
 
 ZEPHIR_INIT_CLASS(Test_Json) {
@@ -28,6 +27,7 @@ ZEPHIR_INIT_CLASS(Test_Json) {
 
 PHP_METHOD(Test_Json, testEncodeObject) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval *obj;
 
 	ZEPHIR_MM_GROW();
@@ -37,13 +37,15 @@ PHP_METHOD(Test_Json, testEncodeObject) {
 	add_assoc_stringl_ex(obj, SS("a"), SL("hello"), 1);
 	add_assoc_stringl_ex(obj, SS("b"), SL("world"), 1);
 	add_assoc_long_ex(obj, SS("c"), 128);
-	zephir_json_encode(return_value, &(return_value), obj, 0  TSRMLS_CC);
+	ZEPHIR_RETURN_CALL_FUNCTION("json_encode", NULL, 67, obj);
+	zephir_check_call_status();
 	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Json, testEncodeArray) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval *arr, *_0 = NULL;
 
 	ZEPHIR_MM_GROW();
@@ -59,13 +61,15 @@ PHP_METHOD(Test_Json, testEncodeArray) {
 	ZEPHIR_INIT_NVAR(_0);
 	ZVAL_LONG(_0, 3);
 	zephir_array_fast_append(arr, _0);
-	zephir_json_encode(return_value, &(return_value), arr, 0  TSRMLS_CC);
+	ZEPHIR_RETURN_CALL_FUNCTION("json_encode", NULL, 67, arr);
+	zephir_check_call_status();
 	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Json, testEncodeOptions) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval *arr, *_0 = NULL, _1;
 
 	ZEPHIR_MM_GROW();
@@ -86,46 +90,53 @@ PHP_METHOD(Test_Json, testEncodeOptions) {
 	zephir_array_fast_append(arr, _0);
 	ZEPHIR_SINIT_VAR(_1);
 	ZVAL_LONG(&_1, 1);
-	zephir_json_encode(return_value, &(return_value), arr, zephir_get_intval(&_1)  TSRMLS_CC);
+	ZEPHIR_RETURN_CALL_FUNCTION("json_encode", NULL, 67, arr, &_1);
+	zephir_check_call_status();
 	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Json, testDecodeObject) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval *obj;
 
 	ZEPHIR_MM_GROW();
 	ZEPHIR_INIT_VAR(obj);
 	ZVAL_STRING(obj, "{\"a\":\"hello\",\"b\":\"world\",\"c\":128}", 1);
 
-	zephir_json_decode(return_value, &(return_value), obj, 0  TSRMLS_CC);
+	ZEPHIR_RETURN_CALL_FUNCTION("json_decode", NULL, 34, obj);
+	zephir_check_call_status();
 	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Json, testDecodeObject2) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval *obj;
 
 	ZEPHIR_MM_GROW();
 	ZEPHIR_INIT_VAR(obj);
 	ZVAL_STRING(obj, "{\"a\":\"hello\",\"b\":\"world\",\"c\":128}", 1);
 
-	zephir_json_decode(return_value, &(return_value), obj, zephir_get_intval(ZEPHIR_GLOBAL(global_true))  TSRMLS_CC);
+	ZEPHIR_RETURN_CALL_FUNCTION("json_decode", NULL, 34, obj, ZEPHIR_GLOBAL(global_true));
+	zephir_check_call_status();
 	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Json, testDecodeArray) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval *arr;
 
 	ZEPHIR_MM_GROW();
 
 	ZEPHIR_INIT_VAR(arr);
 	ZVAL_STRING(arr, "[1,2,3]", 1);
-	zephir_json_decode(return_value, &(return_value), arr, 0  TSRMLS_CC);
+	ZEPHIR_RETURN_CALL_FUNCTION("json_decode", NULL, 34, arr);
+	zephir_check_call_status();
 	RETURN_MM();
 
 }

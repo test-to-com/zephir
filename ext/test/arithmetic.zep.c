@@ -119,7 +119,7 @@ PHP_METHOD(Test_Arithmetic, boolSumExpression) {
 	a = 1;
 	ZEPHIR_SINIT_VAR(_0);
 	ZVAL_LONG(&_0, 0);
-	ZEPHIR_CALL_FUNCTION(&_1, "exp", NULL, 1, &_0);
+	ZEPHIR_CALL_FUNCTION(&_1, "exp", NULL, 2, &_0);
 	zephir_check_call_status();
 	RETURN_MM_LONG((a + zephir_get_numberval(_1)));
 
@@ -178,7 +178,7 @@ PHP_METHOD(Test_Arithmetic, doubleSumExpression) {
 
 	ZEPHIR_SINIT_VAR(_0);
 	ZVAL_LONG(&_0, 0);
-	ZEPHIR_CALL_FUNCTION(&_1, "exp", NULL, 1, &_0);
+	ZEPHIR_CALL_FUNCTION(&_1, "exp", NULL, 2, &_0);
 	zephir_check_call_status();
 	RETURN_MM_DOUBLE((1.0 + zephir_get_numberval(_1)));
 
@@ -195,7 +195,7 @@ PHP_METHOD(Test_Arithmetic, doubleSumVarExpression) {
 	a = 1.0;
 	ZEPHIR_SINIT_VAR(_0);
 	ZVAL_LONG(&_0, 0);
-	ZEPHIR_CALL_FUNCTION(&_1, "exp", NULL, 1, &_0);
+	ZEPHIR_CALL_FUNCTION(&_1, "exp", NULL, 2, &_0);
 	zephir_check_call_status();
 	RETURN_MM_LONG((a + zephir_get_numberval(_1)));
 

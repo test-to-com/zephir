@@ -62,27 +62,31 @@ PHP_METHOD(Test_ResourceTest, testLetStatementSTDERR) {
 
 PHP_METHOD(Test_ResourceTest, testTypeOffResource) {
 
-	zval *a = NULL, *_0;
+	int ZEPHIR_LAST_CALL_STATUS;
+	zval *a = NULL, *_0 = NULL;
 
 	ZEPHIR_MM_GROW();
 
 	ZEPHIR_INIT_VAR(a);
 	ZEPHIR_GET_CONSTANT(a, "STDIN");
-	ZEPHIR_INIT_VAR(_0);
-	zephir_gettype(_0, a TSRMLS_CC);
+	ZEPHIR_CALL_FUNCTION(&_0, "gettype", NULL, 91, a);
+	zephir_check_call_status();
 	RETURN_CCTOR(_0);
 
 }
 
 PHP_METHOD(Test_ResourceTest, testIsResource) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval *a = NULL;
 
 	ZEPHIR_MM_GROW();
 
 	ZEPHIR_INIT_VAR(a);
 	ZEPHIR_GET_CONSTANT(a, "STDIN");
-	RETURN_MM_BOOL(Z_TYPE_P(a) == IS_RESOURCE);
+	ZEPHIR_RETURN_CALL_FUNCTION("is_resource", NULL, 92, a);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
@@ -97,7 +101,7 @@ PHP_METHOD(Test_ResourceTest, testFunctionsForSTDIN) {
 	ZEPHIR_GET_CONSTANT(a, "STDIN");
 	ZEPHIR_SINIT_VAR(_0);
 	ZVAL_LONG(&_0, 1);
-	ZEPHIR_CALL_FUNCTION(NULL, "stream_set_blocking", NULL, 56, a, &_0);
+	ZEPHIR_CALL_FUNCTION(NULL, "stream_set_blocking", NULL, 93, a, &_0);
 	zephir_check_call_status();
 	ZEPHIR_MM_RESTORE();
 

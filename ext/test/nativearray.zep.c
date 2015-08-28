@@ -15,7 +15,6 @@
 #include "kernel/memory.h"
 #include "kernel/array.h"
 #include "kernel/operators.h"
-#include "kernel/string.h"
 #include "kernel/fcall.h"
 
 
@@ -1373,29 +1372,36 @@ PHP_METHOD(Test_NativeArray, testArrayWrongUpdate1) {
 
 PHP_METHOD(Test_NativeArray, testArrayKeys) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval *param;
-
-	zephir_fetch_params(0, 1, 0, &param);
-
-
-
-	zephir_array_keys(return_value, param TSRMLS_CC);
-	return;
-
-}
-
-PHP_METHOD(Test_NativeArray, testImplodeArray) {
-
-	zval *param, *_0;
 
 	ZEPHIR_MM_GROW();
 	zephir_fetch_params(1, 1, 0, &param);
 
 
 
-	ZEPHIR_INIT_VAR(_0);
-	zephir_array_keys(_0, param TSRMLS_CC);
-	zephir_fast_join_str(return_value, SL("|"), _0 TSRMLS_CC);
+	ZEPHIR_RETURN_CALL_FUNCTION("array_keys", NULL, 76, param);
+	zephir_check_call_status();
+	RETURN_MM();
+
+}
+
+PHP_METHOD(Test_NativeArray, testImplodeArray) {
+
+	int ZEPHIR_LAST_CALL_STATUS;
+	zval *param, *_0 = NULL, _1;
+
+	ZEPHIR_MM_GROW();
+	zephir_fetch_params(1, 1, 0, &param);
+
+
+
+	ZEPHIR_CALL_FUNCTION(&_0, "array_keys", NULL, 76, param);
+	zephir_check_call_status();
+	ZEPHIR_SINIT_VAR(_1);
+	ZVAL_STRING(&_1, "|", 0);
+	ZEPHIR_RETURN_CALL_FUNCTION("implode", NULL, 77, &_1, _0);
+	zephir_check_call_status();
 	RETURN_MM();
 
 }
@@ -1405,7 +1411,8 @@ PHP_METHOD(Test_NativeArray, testImplodeArray) {
  */
 PHP_METHOD(Test_NativeArray, issue110) {
 
-	zval *byteUnits, *_0;
+	int ZEPHIR_LAST_CALL_STATUS;
+	zval *byteUnits, *_0 = NULL, _1;
 
 	ZEPHIR_MM_GROW();
 
@@ -1420,9 +1427,12 @@ PHP_METHOD(Test_NativeArray, issue110) {
 	add_assoc_long_ex(byteUnits, SS("MB"), 20);
 	add_assoc_long_ex(byteUnits, SS("GB"), 30);
 	add_assoc_long_ex(byteUnits, SS("TB"), 40);
-	ZEPHIR_INIT_VAR(_0);
-	zephir_array_keys(_0, byteUnits TSRMLS_CC);
-	zephir_fast_join_str(return_value, SL("|"), _0 TSRMLS_CC);
+	ZEPHIR_CALL_FUNCTION(&_0, "array_keys", NULL, 76, byteUnits);
+	zephir_check_call_status();
+	ZEPHIR_SINIT_VAR(_1);
+	ZVAL_STRING(&_1, "|", 0);
+	ZEPHIR_RETURN_CALL_FUNCTION("implode", NULL, 77, &_1, _0);
+	zephir_check_call_status();
 	RETURN_MM();
 
 }
@@ -1533,7 +1543,7 @@ PHP_METHOD(Test_NativeArray, issue709) {
 			ZEPHIR_INIT_NVAR(_3);
 			ZVAL_LONG(_3, 2);
 			zephir_array_fast_append(arr, _3);
-			ZEPHIR_CALL_FUNCTION(&_5, "array_rand", &_6, 46, arr);
+			ZEPHIR_CALL_FUNCTION(&_5, "array_rand", &_6, 78, arr);
 			zephir_check_call_status();
 			zephir_array_fetch(&_4, arr, _5, PH_NOISY | PH_READONLY, "test/nativearray.zep", 636 TSRMLS_CC);
 			ZEPHIR_CPY_WRT(arr, _4);

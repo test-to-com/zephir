@@ -12,10 +12,9 @@
 #include <Zend/zend_interfaces.h>
 
 #include "kernel/main.h"
+#include "kernel/fcall.h"
 #include "kernel/operators.h"
-#include "kernel/object.h"
 #include "kernel/memory.h"
-#include "kernel/file.h"
 
 
 ZEPHIR_INIT_CLASS(Test_Exists) {
@@ -28,10 +27,12 @@ ZEPHIR_INIT_CLASS(Test_Exists) {
 
 PHP_METHOD(Test_Exists, testClassExists) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zend_bool autoload;
 	zval *className, *autoload_param = NULL;
 
-	zephir_fetch_params(0, 1, 1, &className, &autoload_param);
+	ZEPHIR_MM_GROW();
+	zephir_fetch_params(1, 1, 1, &className, &autoload_param);
 
 	if (!autoload_param) {
 		autoload = 1;
@@ -40,16 +41,20 @@ PHP_METHOD(Test_Exists, testClassExists) {
 	}
 
 
-	RETURN_BOOL(zephir_class_exists(className, zephir_is_true((autoload ? ZEPHIR_GLOBAL(global_true) : ZEPHIR_GLOBAL(global_false)))  TSRMLS_CC));
+	ZEPHIR_RETURN_CALL_FUNCTION("class_exists", NULL, 43, className, (autoload ? ZEPHIR_GLOBAL(global_true) : ZEPHIR_GLOBAL(global_false)));
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Exists, testInterfaceExists) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zend_bool autoload;
 	zval *interfaceName, *autoload_param = NULL;
 
-	zephir_fetch_params(0, 1, 1, &interfaceName, &autoload_param);
+	ZEPHIR_MM_GROW();
+	zephir_fetch_params(1, 1, 1, &interfaceName, &autoload_param);
 
 	if (!autoload_param) {
 		autoload = 1;
@@ -58,31 +63,41 @@ PHP_METHOD(Test_Exists, testInterfaceExists) {
 	}
 
 
-	RETURN_BOOL(zephir_interface_exists(interfaceName, zephir_is_true((autoload ? ZEPHIR_GLOBAL(global_true) : ZEPHIR_GLOBAL(global_false)))  TSRMLS_CC));
+	ZEPHIR_RETURN_CALL_FUNCTION("interface_exists", NULL, 44, interfaceName, (autoload ? ZEPHIR_GLOBAL(global_true) : ZEPHIR_GLOBAL(global_false)));
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Exists, testMethodExists) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval *obj, *methodName;
 
-	zephir_fetch_params(0, 2, 0, &obj, &methodName);
+	ZEPHIR_MM_GROW();
+	zephir_fetch_params(1, 2, 0, &obj, &methodName);
 
 
 
-	RETURN_BOOL((zephir_method_exists(obj, methodName TSRMLS_CC)  == SUCCESS));
+	ZEPHIR_RETURN_CALL_FUNCTION("method_exists", NULL, 45, obj, methodName);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Exists, testFileExists) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval *fileName;
 
-	zephir_fetch_params(0, 1, 0, &fileName);
+	ZEPHIR_MM_GROW();
+	zephir_fetch_params(1, 1, 0, &fileName);
 
 
 
-	RETURN_BOOL((zephir_file_exists(fileName TSRMLS_CC) == SUCCESS));
+	ZEPHIR_RETURN_CALL_FUNCTION("file_exists", NULL, 46, fileName);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 

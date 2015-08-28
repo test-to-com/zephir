@@ -16,7 +16,6 @@
 #include "kernel/array.h"
 #include "kernel/operators.h"
 #include "kernel/memory.h"
-#include "math.h"
 
 
 ZEPHIR_INIT_CLASS(Test_Geometry) {
@@ -95,7 +94,8 @@ PHP_METHOD(Test_Geometry, runOptimize) {
 
 PHP_METHOD(Test_Geometry, distanceStatic) {
 
-	zval *x1_param = NULL, *y1_param = NULL, *x2_param = NULL, *y2_param = NULL, *_0;
+	int ZEPHIR_LAST_CALL_STATUS;
+	zval *x1_param = NULL, *y1_param = NULL, *x2_param = NULL, *y2_param = NULL, _0;
 	double x1, y1, x2, y2;
 
 	ZEPHIR_MM_GROW();
@@ -107,9 +107,11 @@ PHP_METHOD(Test_Geometry, distanceStatic) {
 	y2 = zephir_get_doubleval(y2_param);
 
 
-	ZEPHIR_INIT_VAR(_0);
-	ZVAL_DOUBLE(_0, ((((x1 - x2)) * ((x1 - x2))) + (((y1 - y2)) * ((y1 - y2)))));
-	RETURN_MM_DOUBLE(sqrt(((((x1 - x2)) * ((x1 - x2))) + (((y1 - y2)) * ((y1 - y2))))));
+	ZEPHIR_SINIT_VAR(_0);
+	ZVAL_DOUBLE(&_0, ((((x1 - x2)) * ((x1 - x2))) + (((y1 - y2)) * ((y1 - y2)))));
+	ZEPHIR_RETURN_CALL_FUNCTION("sqrt", NULL, 13, &_0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 

@@ -13,9 +13,8 @@
 
 #include "kernel/main.h"
 #include "kernel/memory.h"
-#include "math.h"
+#include "kernel/fcall.h"
 #include "kernel/operators.h"
-#include "kernel/math.h"
 
 
 ZEPHIR_INIT_CLASS(Test_Optimizers_Tan) {
@@ -28,71 +27,83 @@ ZEPHIR_INIT_CLASS(Test_Optimizers_Tan) {
 
 PHP_METHOD(Test_Optimizers_Tan, testInt) {
 
-	zval *_0;
-	int a = 0;
+	zval _0;
+	int a = 0, ZEPHIR_LAST_CALL_STATUS;
 
 	ZEPHIR_MM_GROW();
 
-	ZEPHIR_INIT_VAR(_0);
-	ZVAL_LONG(_0, a);
-	RETURN_MM_DOUBLE(tan(a));
+	ZEPHIR_SINIT_VAR(_0);
+	ZVAL_LONG(&_0, a);
+	ZEPHIR_RETURN_CALL_FUNCTION("tan", NULL, 16, &_0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Optimizers_Tan, testVar) {
 
-	zval *_0;
-	int a = 0;
+	zval _0;
+	int a = 0, ZEPHIR_LAST_CALL_STATUS;
 
 	ZEPHIR_MM_GROW();
 
-	ZEPHIR_INIT_VAR(_0);
-	ZVAL_LONG(_0, a);
-	RETURN_MM_DOUBLE(tan(a));
+	ZEPHIR_SINIT_VAR(_0);
+	ZVAL_LONG(&_0, a);
+	ZEPHIR_RETURN_CALL_FUNCTION("tan", NULL, 16, &_0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Optimizers_Tan, testVar2) {
 
-	zval *_0;
-	int a = 1;
+	zval _0;
+	int a = 1, ZEPHIR_LAST_CALL_STATUS;
 
 	ZEPHIR_MM_GROW();
 
-	ZEPHIR_INIT_VAR(_0);
-	ZVAL_LONG(_0, a);
-	RETURN_MM_DOUBLE(tan(a));
+	ZEPHIR_SINIT_VAR(_0);
+	ZVAL_LONG(&_0, a);
+	ZEPHIR_RETURN_CALL_FUNCTION("tan", NULL, 16, &_0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Optimizers_Tan, testIntValue1) {
 
-	zval *_0;
+	int ZEPHIR_LAST_CALL_STATUS;
+	zval _0;
 
 	ZEPHIR_MM_GROW();
 
-	ZEPHIR_INIT_VAR(_0);
-	ZVAL_LONG(_0, 1);
-	RETURN_MM_DOUBLE(tan(1));
+	ZEPHIR_SINIT_VAR(_0);
+	ZVAL_LONG(&_0, 1);
+	ZEPHIR_RETURN_CALL_FUNCTION("tan", NULL, 16, &_0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Optimizers_Tan, testIntValue2) {
 
-	zval *_0;
+	int ZEPHIR_LAST_CALL_STATUS;
+	zval _0;
 
 	ZEPHIR_MM_GROW();
 
-	ZEPHIR_INIT_VAR(_0);
-	ZVAL_LONG(_0, 2);
-	RETURN_MM_DOUBLE(tan(2));
+	ZEPHIR_SINIT_VAR(_0);
+	ZVAL_LONG(&_0, 2);
+	ZEPHIR_RETURN_CALL_FUNCTION("tan", NULL, 16, &_0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Optimizers_Tan, testIntParameter) {
 
-	zval *a_param = NULL, *_0;
-	int a;
+	zval *a_param = NULL, _0;
+	int a, ZEPHIR_LAST_CALL_STATUS;
 
 	ZEPHIR_MM_GROW();
 	zephir_fetch_params(1, 1, 0, &a_param);
@@ -100,21 +111,27 @@ PHP_METHOD(Test_Optimizers_Tan, testIntParameter) {
 	a = zephir_get_intval(a_param);
 
 
-	ZEPHIR_INIT_VAR(_0);
-	ZVAL_LONG(_0, a);
-	RETURN_MM_DOUBLE(tan(a));
+	ZEPHIR_SINIT_VAR(_0);
+	ZVAL_LONG(&_0, a);
+	ZEPHIR_RETURN_CALL_FUNCTION("tan", NULL, 16, &_0);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 
 PHP_METHOD(Test_Optimizers_Tan, testVarParameter) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval *a;
 
-	zephir_fetch_params(0, 1, 0, &a);
+	ZEPHIR_MM_GROW();
+	zephir_fetch_params(1, 1, 0, &a);
 
 
 
-	RETURN_DOUBLE(zephir_tan(a TSRMLS_CC));
+	ZEPHIR_RETURN_CALL_FUNCTION("tan", NULL, 16, a);
+	zephir_check_call_status();
+	RETURN_MM();
 
 }
 

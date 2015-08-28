@@ -27,6 +27,7 @@ ZEPHIR_INIT_CLASS(Test_EvalTest) {
 
 PHP_METHOD(Test_EvalTest, evalCode) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zval *code_param = NULL;
 	zval *code = NULL;
 
@@ -36,7 +37,8 @@ PHP_METHOD(Test_EvalTest, evalCode) {
 	zephir_get_strval(code, code_param);
 
 
-	zephir_eval_php(code, return_value, "test/evaltest.zep:7" TSRMLS_CC);
+	ZEPHIR_RETURN_CALL_FUNCTION("eval", NULL, 0, code);
+	zephir_check_call_status();
 	RETURN_MM();
 
 }

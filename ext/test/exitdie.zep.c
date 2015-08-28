@@ -13,7 +13,7 @@
 
 #include "kernel/main.h"
 #include "kernel/operators.h"
-#include "kernel/exit.h"
+#include "kernel/fcall.h"
 #include "kernel/memory.h"
 
 
@@ -27,6 +27,7 @@ ZEPHIR_INIT_CLASS(Test_ExitDie) {
 
 PHP_METHOD(Test_ExitDie, testExit) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zend_bool _0;
 	zval *param = NULL;
 
@@ -44,11 +45,11 @@ PHP_METHOD(Test_ExitDie, testExit) {
 		_0 = ZEPHIR_IS_STRING(param, "");
 	}
 	if (_0) {
-		zephir_exit_empty();
-		ZEPHIR_MM_RESTORE();
+		ZEPHIR_CALL_FUNCTION(NULL, "exit", NULL, 0);
+		zephir_check_call_status();
 	} else {
-		zephir_exit(param);
-		ZEPHIR_MM_RESTORE();
+		ZEPHIR_CALL_FUNCTION(NULL, "exit", NULL, 0, param);
+		zephir_check_call_status();
 	}
 	ZEPHIR_MM_RESTORE();
 
@@ -56,6 +57,7 @@ PHP_METHOD(Test_ExitDie, testExit) {
 
 PHP_METHOD(Test_ExitDie, testDie) {
 
+	int ZEPHIR_LAST_CALL_STATUS;
 	zend_bool _0;
 	zval *param = NULL;
 
@@ -73,11 +75,11 @@ PHP_METHOD(Test_ExitDie, testDie) {
 		_0 = ZEPHIR_IS_STRING(param, "");
 	}
 	if (_0) {
-		zephir_exit_empty();
-		ZEPHIR_MM_RESTORE();
+		ZEPHIR_CALL_FUNCTION(NULL, "die", NULL, 0);
+		zephir_check_call_status();
 	} else {
-		zephir_exit(param);
-		ZEPHIR_MM_RESTORE();
+		ZEPHIR_CALL_FUNCTION(NULL, "die", NULL, 0, param);
+		zephir_check_call_status();
 	}
 	ZEPHIR_MM_RESTORE();
 
