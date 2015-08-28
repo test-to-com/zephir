@@ -23,13 +23,15 @@ define('ZEPHIRPATH', __DIR__ . DIRECTORY_SEPARATOR);
 define('T', "\t");
 define('2T', "\t\t");
 
-if (file_exists(__DIR__ . '/vendor/autoload.php')) {
-  require __DIR__ . '/vendor/autoload.php';
-} else {
-  if (file_exists(__DIR__ . '/vendor/getoptkit/src/SplClassLoader.php')) {
-    
-  }
+if (file_exists(__DIR__ . '/vendor/classloader/ClassLoader.php')) {
+  require_once __DIR__ . '/vendor/classloader/ClassLoader.php';
 
+  $loader = new \Symfony\Component\ClassLoader\ClassLoader();
+  $loader->register();
+
+  $loader->addPrefix('Zephir', __DIR__ . '/Library');
+  $loader->addPrefix('GetOptionKit', __DIR__ . '/vendor/getoptkit/src');
+} else {
   require __DIR__ . '/Library/Loader.php';
   Zephir\Loader::register();
 }
