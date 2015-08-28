@@ -100,12 +100,12 @@ class Documentation
 
         if (!file_exists($outputDir)) {
             if (!mkdir($outputDir, 0777, true)) {
-                throw new Exception("Can't write output directory $outputDir");
+                throw new \Exception("Can't write output directory $outputDir");
             }
         }
 
         if (!is_writable($outputDir)) {
-            throw new Exception("Can't write output directory $outputDir");
+            throw new \Exception("Can't write output directory $outputDir");
         }
 
         $themeConfig["options"] = $this->__prepareThemeOptions($themeConfig, $command);
@@ -135,17 +135,17 @@ class Documentation
             if ("{" == $optionsFromCommand{0}) {
                 $parsedOptions = json_decode(trim($optionsFromCommand), true);
                 if (!$parsedOptions || !is_array($parsedOptions)) {
-                    throw new Exception("Unable to parse json from 'theme-options' argument");
+                    throw new \Exception("Unable to parse json from 'theme-options' argument");
                 }
             } else {
                 if (file_exists($optionsFromCommand)) {
                     $unparsed = file_get_contents($optionsFromCommand);
                     $parsedOptions = json_decode($unparsed, true);
                     if (!$parsedOptions || !is_array($parsedOptions)) {
-                        throw new Exception("Unable to parse json from the file '$optionsFromCommand'");
+                        throw new \Exception("Unable to parse json from the file '$optionsFromCommand'");
                     }
                 } else {
-                    throw new Exception("Unable to find file '$optionsFromCommand'");
+                    throw new \Exception("Unable to find file '$optionsFromCommand'");
                 }
             }
         }
@@ -254,7 +254,7 @@ class Documentation
             if (file_exists($themePath) && is_dir($themePath)) {
                 return $themePath;
             } else {
-                throw new Exception("Invalid value for option 'theme-path' : the theme '$themePath' was not found or is not a valid theme.");
+                throw new \Exception("Invalid value for option 'theme-path' : the theme '$themePath' was not found or is not a valid theme.");
             }
         }
 
@@ -338,7 +338,7 @@ class Documentation
 
     public static function classUrl($c)
     {
-        if ($c instanceof ClassDefinition) {
+        if ($c instanceof ClassDefinitionAbstract) {
             $cname = $c->getCompleteName();
         } else {
             $cname = $c;

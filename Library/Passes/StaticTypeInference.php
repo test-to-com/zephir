@@ -19,7 +19,7 @@
 
 namespace Zephir\Passes;
 
-use Zephir\StatementsBlock;
+use Zephir\Statements\StatementsBlockAbstract as StatementsBlock;
 
 /**
  * StaticTypeInference

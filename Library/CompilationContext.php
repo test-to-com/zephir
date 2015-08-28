@@ -200,7 +200,7 @@ class CompilationContext
      */
     public function getFullName($className)
     {
-        $namespace = (isset($this->currentMethod) && $this->currentMethod instanceof FunctionDefinition) ?
+        $namespace = (isset($this->currentMethod) && $this->currentMethod instanceof FunctionDefinitionAbstract) ?
             $this->currentMethod->getNamespace() :
             $this->classDefinition->getNamespace();
 

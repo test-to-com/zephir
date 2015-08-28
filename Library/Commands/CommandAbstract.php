@@ -96,7 +96,7 @@ abstract class CommandAbstract implements CommandInterface
             throw new \InvalidArgumentException('Backend '.$params['backend'].' does not exist');
         }
         $backend = new $className();
-        $compiler = new Compiler($config, $logger, $backend);
+        $compiler = new \Zephir\C\Compiler($config, $logger, $backend);
         $command = $this->getCommand();
         $compiler->$command($this);
     }

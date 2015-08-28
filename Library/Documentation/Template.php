@@ -5,7 +5,7 @@ namespace Zephir\Documentation;
 use Zephir\Config;
 use Zephir\Exception;
 use Zephir\CompilerFile;
-use Zephir\ClassDefinition;
+use Zephir\ClassDefinitionAbstract;
 use Zephir\Documentation;
 
 class Template
@@ -27,7 +27,7 @@ class Template
 
         // todo clean buffer before exception
         if ($nestedLevel > 800) {
-            throw new Exception("Recursive inclusion detected in theme creation");
+            throw new \Exception("Recursive inclusion detected in theme creation");
         }
 
         $this->theme = $theme;
@@ -133,7 +133,7 @@ class Template
             } elseif (is_string($url)) {
                 return $url;
             }
-        } elseif ($url instanceof ClassDefinition) {
+        } elseif ($url instanceof ClassDefinitionAbstract) {
             return $this->url(Documentation::classUrl($url));
         } elseif ($url instanceof CompilerFile) {
             return $this->url(Documentation::classUrl($url->getClassDefinition()));
@@ -183,7 +183,7 @@ class Template
         $inputFilename = $this->theme->getThemePathExtendsAware($fileName);
 
         if (!file_exists($inputFilename)) {
-            throw new Exception("Template not found : $inputFilename");
+            throw new \Exception("Template not found : $inputFilename");
         }
 
         return $inputFilename;

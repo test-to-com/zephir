@@ -19,7 +19,7 @@
 
 namespace Zephir\Cache;
 
-use Zephir\Call;
+use Zephir\CallAbstract;
 use Zephir\CompilationContext;
 use Zephir\Passes\CallGathererPass;
 
@@ -66,7 +66,7 @@ class FunctionCache
      * @param CompilationContext $compilationContext
      * @param boolean $exists
      */
-    public function get($functionName, CompilationContext $compilationContext, Call $call, $exists)
+    public function get($functionName, CompilationContext $compilationContext, CallAbstract $call, $exists)
     {
         if (isset($this->cache[$functionName])) {
             return $this->cache[$functionName] . ', ' . SlotsCache::getExistingFunctionSlot($functionName);

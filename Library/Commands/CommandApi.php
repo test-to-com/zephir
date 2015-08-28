@@ -76,10 +76,10 @@ class CommandApi extends CommandAbstract
                 if (preg_match($allowedArgs[$k], $p)) {
                     $this->setParameter($k, $p);
                 } else {
-                    throw new Exception("Invalid value for argument '$k'");
+                    throw new \Exception("Invalid value for argument '$k'");
                 }
             } else {
-                throw new Exception("Invalid argument '$k''");
+                throw new \Exception("Invalid argument '$k''");
             }
         }
 
