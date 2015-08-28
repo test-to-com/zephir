@@ -6,6 +6,3 @@
 [submodule "GetOptionKit"]
 	path = vendor/getoptionkit
 	url = https://github.com/c9s/GetOptionKit.git
-[submodule "Symfony-ClassLoader"]
-	path = vendor/classloader
-	url = https://github.com/symfony/ClassLoader.git
