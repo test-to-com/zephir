@@ -17,20 +17,28 @@
   +--------------------------------------------------------------------------+
  */
 
-error_reporting(E_ALL);
+namespace Zephir\API\DI;
 
-define('ZEPHIRPATH', __DIR__ . DIRECTORY_SEPARATOR);
-define('T', "\t");
-define('2T', "\t\t");
+/**
+ * DI capable object
+ * 
+ * Based Directly on Phalcon\Di\InjectionAwareInterface;
+ * 
+ * @author Paulo Ferreira <pf at sourcenotes.org>
+ */
+interface InjectionAware {
 
-if (file_exists(__DIR__ . '/vendor/classloader/src/autoload.php')) {
-  require_once __DIR__ . '/vendor/classloader/src/autoload.php';
+  /**
+   * Sets the dependency injector
+   * 
+   * @param \Zephir\API\DI $dependencyInjector
+   */
+  public function setDI(\Zephir\API\DI $dependencyInjector);
 
-  $loader = new \Riimu\Kit\ClassLoader\ClassLoader();
-  $loader->addPrefixPath(__DIR__ . '/Library', 'Zephir');
-  $loader->addBasePath(__DIR__ . '/vendor/getoptionkit/src/');
-  $loader->register();
-} else {
-  require __DIR__ . '/Library/Loader.php';
-  Zephir\Loader::register();
+  /**
+   * Returns the internal dependency injector
+   * 
+   * @return \Zephir\API\DI
+   */
+  public function getDI();
 }

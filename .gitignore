@@ -16,6 +16,10 @@ vendor/
 build
 phpunit.xml
 
+output/
+cphalcon/
+ext-save/
+
 # Ignore for all projects based on Zephir
 
 .temp/
@@ -76,8 +80,5 @@ runtime/a.zep
 runtime/index.php
 runtime/parser.out
 
-# Ignore Test Directory for PHALCON
 
-cphalcon/
-ext-save/
 

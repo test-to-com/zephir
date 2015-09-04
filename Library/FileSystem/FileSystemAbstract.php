@@ -17,20 +17,43 @@
   +--------------------------------------------------------------------------+
  */
 
-error_reporting(E_ALL);
+namespace Zephir\FileSystem;
 
-define('ZEPHIRPATH', __DIR__ . DIRECTORY_SEPARATOR);
-define('T', "\t");
-define('2T', "\t\t");
+/**
+ * HardDisk
+ *
+ * Uses the standard hard-disk as filesystem for temporary operations
+ */
+abstract class FileSystemAbstract implements \Zephir\API\FileSystem {
 
-if (file_exists(__DIR__ . '/vendor/classloader/src/autoload.php')) {
-  require_once __DIR__ . '/vendor/classloader/src/autoload.php';
+  protected $initialized = false;
 
-  $loader = new \Riimu\Kit\ClassLoader\ClassLoader();
-  $loader->addPrefixPath(__DIR__ . '/Library', 'Zephir');
-  $loader->addBasePath(__DIR__ . '/vendor/getoptionkit/src/');
-  $loader->register();
-} else {
-  require __DIR__ . '/Library/Loader.php';
-  Zephir\Loader::register();
+  /**
+   * Checks if the filesystem is initialized
+   *
+   * @return boolean 'true' if initialized, 'false' otherwise
+   */
+  public function isInitialized() {
+    return $this->initialized;
+  }
+
+  /**
+   * Initialize the filesystem
+   * 
+   * @return boolean 'true' if initialized, 'false' otherwise
+   */
+  public function initialize() {
+    if (!$this->isInitialized()) {
+      $this->initialized = $this->_initialize();
+    }
+
+    return $this->initialized;
+  }
+
+  /**
+   * Perform the Actual FileSystem Initialization
+   * 
+   * @return boolean 'true' if initialized, 'false' otherwise
+   */
+  abstract protected function _initialize();
 }
