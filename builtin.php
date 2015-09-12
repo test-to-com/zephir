@@ -33,3 +33,43 @@ function is_php_version($version) {
   }
   return false;
 }
+
+function zephir_read_property($object, $property) {
+  /* TODO Improve Handling 
+   * i.e. if $object is not an object -  "Trying to get property \"%s\" of non-object"
+   * etc.
+   * look at generated code for zephir_read_property
+   */
+  if (zephir_isset_property($object, $property)) {
+    return $object->$property;
+  }
+}
+
+function zephir_isset_array($array, $index) {
+  if (isset($array) && isset($index)) {
+    switch (gettype($index)) {
+      case 'double':
+        $index = (integer) $index;
+      case 'boolean':
+      case 'integer':
+      case 'resource':
+        return isset($a[$index]);
+      case 'NULL':
+        $index = '';
+      case 'string':
+        return array_key_exists($index, $array);
+      default:
+        throw new \Exception('Illegal offset type');
+    }
+  }
+  return false;
+}
+
+function zephir_isset_property($object, $property) {
+  if (isset($object) && isset($property)) {
+    if (is_object($object) && is_string($property)) {
+      return property_exists($object, $property);
+    }
+  }
+  return false;
+}

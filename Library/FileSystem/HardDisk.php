@@ -59,7 +59,7 @@ class HardDisk extends FileSystemAbstract {
       }
 
       $path = trim($path);
-      $path = count($path) ? $path : null;
+      $path = strlen($path) ? $path : null;
     }
 
     $path = isset($path) ? $path : (sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'zephir');
@@ -83,7 +83,7 @@ class HardDisk extends FileSystemAbstract {
     if (isset($path) && is_string($path)) { // YES
       // Is $path an empty string?
       $path = trim($path);
-      if (count($path) === 0) { // YES
+      if (strlen($path) === 0) { // YES
         $path = null;
       }
     } else {
@@ -290,7 +290,7 @@ class HardDisk extends FileSystemAbstract {
     }
 
     $path = trim($path);
-    if (count($path) === 0) {
+    if (strlen($path) === 0) {
       throw new \Exception("Value for Path [{$property}] is empty");
     }
 

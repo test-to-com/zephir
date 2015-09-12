@@ -16,71 +16,7 @@ $di = new \Zephir\DI;
 
 // Set the File System
 $di->set("fileSystem", "\Zephir\FileSystem\HardDisk", true);
-
-/**
- * Compiles the file generating a JSON intermediate representation
- *
- * @param Compiler $compiler
- * @return array
- */
-function genIR($di, $zepFile) {
-  // Get File System from Dependency Injector
-  $fs = $di['fileSystem'];
-
-  // Does the ZEP File Exist?
-  $zepRealPath = $fs->realpath($zepFile, FileSystem::INPUT);
-  if (!$fs->exists($zepRealPath)) { // NO
-    throw new \Exception("Source File [{$zepRealPath}] doesn't exist");
-  }
-
-  // Create Normalized File Paths for the Parse Results
-  $normalizedPath = str_replace(array(DIRECTORY_SEPARATOR, ":", '/'), '_', $zepRealPath);
-  $compilePath = $fs->realpath($normalizedPath, FileSystem::OUTPUT);
-  $compilePathJS = $compilePath . ".js";
-  $compilePathPHP = $compilePath . ".php";
-
-  // Create Path to Zephir Binary
-  if (PHP_OS == "WINNT") {
-    $zephirParserBinary = $fs->realpath('bin\zephir-parser.exe', FileSystem::SYSTEM);
-  } else {
-    $zephirParserBinary = $fs->realpath('bin/zephir-parser', FileSystem::SYSTEM);
-  }
-
-  // Does it Exist?
-  if (!$fs->exists($zephirParserBinary)) { // NO
-    throw new \Exception($zephirParserBinary . ' was not found');
-  }
-
-  $changed = false;
-
-  // Has the ZEP File already been Parsed (intermediate file JS exists)?
-  if ($fs->exists($compilePathJS)) { // YES
-    // Is it Older than the Source ZEP File, OR, are we using a New ZEP Parser?
-    $modificationTime = $fs->modificationTime($compilePathJS);
-    if ($modificationTime < $fs->modificationTime($zepRealPath) || $modificationTime < $fs->modificationTime($zephirParserBinary)) { // YES
-      // Reparse the File
-      $fs->system($zephirParserBinary . ' ' . $zepRealPath, 'stdout', $compilePathJS);
-      $changed = true;
-    }
-  } else { // NO : Parse the ZEP File
-    $fs->system($zephirParserBinary . ' ' . $zepRealPath, 'stdout', $compilePathJS);
-    $changed = true;
-  }
-
-  // Do we have a new Parsed Intermediate File (JS)?
-  if ($changed || !$fs->exists($compilePathPHP)) { // YES: Try to build the Final PHP Result
-    // Is the Intermediate JS Valid?
-    $json = json_decode($fs->read($compilePathJS), true);
-    if (!isset($json)) { // NO
-      // TODO : $fs->delete($zepRealPath);
-      throw new \Exception("Failed to Parse the ZEP File [{$zepRealPath}]");
-    }
-    $data = '<?php return ' . var_export($json, true) . ';';
-    $fs->write($compilePathPHP, $data);
-  }
-
-  return $fs->requireFile($compilePathPHP);
-}
+$di->set("emitter", "\Zephir\PHP\Emitter", true);
 
 /*
  * commands
@@ -139,7 +75,6 @@ if (count($arguments) < 2) {
 }
 
 $fs = $di['fileSystem'];
-;
 
 $cwd = getcwd();
 
@@ -185,16 +120,9 @@ echo "Output Directory [{$output_dir}]\n";
 echo "Temporary Directory [{$tmp_dir}]\n";
 
 // Are we parsing a Single File?
+$emitter = $di['emitter'];
 if (isset($input_file)) { // YES
-  genIR($di, $input_file);
+  $emitter->file($input_file);
 } else { // NO: Parsing Entire Directory
-  // Call IR Parser for Input 
-  $fs->enumerateFiles(function($path) use($di) {
-    $count_path = strlen($path);
-    $extension = $count_path > 4 ? strtolower(substr($path, $count_path - 4)) : null;
-    if (isset($extension) && ($extension === '.zep')) {
-      genIR($di, $path);
-    }
-    return true;
-  });
+  $emitter->files($input_dir);
 }

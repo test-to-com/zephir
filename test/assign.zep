@@ -293,7 +293,7 @@ class Assign
 	public function testAssign37()
 	{
 		var v = "abc";
-		var arr = [];
+		var arr = []; 
 
 		let arr = [
 			"a": ["b_key": "b_val", "b": []]
