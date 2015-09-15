@@ -293,6 +293,54 @@ class Emitter implements IEmitter {
     echo "}\n";
   }
 
+  protected function _emitInterface($ast) {
+    /*
+      class_declaration_statement:
+      class_modifiers T_CLASS { $<num>$ = CG(zend_lineno); }
+      T_STRING extends_from implements_list backup_doc_comment '{' class_statement_list '}'
+      { $$ = zend_ast_create_decl(ZEND_AST_CLASS, $1, $<num>3, $7, zend_ast_get_str($4), $5, $6, $9, NULL); }
+      |	T_CLASS { $<num>$ = CG(zend_lineno); }
+      T_STRING extends_from implements_list backup_doc_comment '{' class_statement_list '}'
+      { $$ = zend_ast_create_decl(ZEND_AST_CLASS, 0, $<num>2, $6, zend_ast_get_str($3), $4, $5, $8, NULL); }
+      ;
+     * 
+      class_modifiers:
+      class_modifier 					{ $$ = $1; }
+      |	class_modifiers class_modifier 	{ $$ = zend_add_class_modifier($1, $2); }
+      ;
+     * 
+      class_modifier:
+      T_ABSTRACT 		{ $$ = ZEND_ACC_EXPLICIT_ABSTRACT_CLASS; }
+      |	T_FINAL 		{ $$ = ZEND_ACC_FINAL; }
+      ;
+     */
+
+
+    /* TODO:
+     * Carriage Return after {name} and extends
+     * Carriage Return before '{'
+     */
+    echo "interface {$ast['name']}";
+    $extends = isset($ast['extends']) ? $ast['extends'] : null;
+    if (isset($extends)) {
+      echo "\n";
+      echo "{$extends} ";
+    }
+    echo "{\n";
+
+    $sections = isset($ast['definition']) ? $ast['definition'] : null;
+    if (isset($sections)) {
+      $sectionsOrder = ['constants', 'properties', 'methods'];
+
+      foreach ($sectionsOrder as $order) {
+        if (isset($sections[$order])) {
+          $this->_redirectAST($order, $sections[$order], 'class');
+        }
+      }
+    }
+    echo "}\n";
+  }
+
   protected function _processVisibility($visibility) {
     return implode(' ', $visibility);
   }
@@ -1174,6 +1222,28 @@ class Emitter implements IEmitter {
     $this->_redirectAST($right['type'], $right);
   }
 
+  protected function _emitIRange($ast) {
+    $left = $ast['left'];
+    $right = $ast['right'];
+
+    echo 'range(';
+    $this->_redirectAST($left['type'], $left);
+    echo ',';
+    $this->_redirectAST($right['type'], $right);
+    echo ')';
+  }
+
+  protected function _emitERange($ast) {
+    $left = $ast['left'];
+    $right = $ast['right'];
+
+    echo 'array_shift(array_pop(range(';
+    $this->_redirectAST($left['type'], $left);
+    echo ',';
+    $this->_redirectAST($right['type'], $right);
+    echo ')))';
+  }
+
   protected function _emitTypeof($ast) {
     $left = $ast['left'];
     echo 'gettype(';
@@ -1187,21 +1257,262 @@ class Emitter implements IEmitter {
    * @param type $ast
    */
   protected function _emitMcall($ast) {
+    /* TODO If a variable is of type (array or string) we have to verify
+     * if it's using a fake object calls, this requires that we capture and 
+     * maintain parse data (i.e. if parameters are of type string/array).
+     * If they are declared 
+     */
     $object = $ast['variable'];
-    $this->_emitVariable($object);
-    echo "->{$ast['name']}(";
-    if (isset($ast['parameters'])) {
-      $first = true;
-      foreach ($ast['parameters'] as $parameter) {
-        if (!$first) {
-          echo ', ';
+    $objtype = $object['type'];
+    switch ($objtype) {
+      case 'string':
+        $this->_emitMcallString($ast);
+        break;
+      case 'array':
+        $this->_emitMcallArray($ast);
+        break;
+      default:
+        $this->_emitVariable($object);
+        echo "->{$ast['name']}(";
+        if (isset($ast['parameters'])) {
+          $first = true;
+          foreach ($ast['parameters'] as $parameter) {
+            if (!$first) {
+              echo ', ';
+            }
+            $parameter = $parameter['parameter'];
+            $this->_redirectAST($parameter['type'], $parameter);
+            $first = false;
+          }
         }
-        $parameter = $parameter['parameter'];
-        $this->_redirectAST($parameter['type'], $parameter);
-        $first = false;
-      }
+        echo ")";
     }
-    echo ")";
+  }
+
+  protected function _emitMcallString($ast) {
+    $map = [
+      'index' => 'strpos',
+      'trim' => 'trim',
+      'trimleft' => 'ltrim',
+      'trimright' => 'rtrim',
+      'length' => 'strlen',
+      'lower' => 'strtolower',
+      'upper' => 'strtoupper',
+      'lowerfirst' => 'lcfirst',
+      'upperfirst' => 'ucfirst',
+      'format' => 'sprintf',
+      'md5' => 'md5',
+      'sha1' => 'sha1',
+      'nl2br' => 'nl2br',
+      'parsecsv' => 'str_getcsv',
+      'parsejson' => 'json_decode',
+      'tojson' => 'json_encode',
+      'toutf8' => 'utf8_encode',
+      'repeat' => 'str_repeat',
+      'shuffle' => 'str_shuffle',
+      'split' => 'str_split',
+      'compare' => 'strcmp',
+      'comparelocale' => 'strcoll',
+      'rev' => 'strrev',
+      'htmlspecialchars' => 'htmlspecialchars',
+      'camelize' => 'camelize',
+      'uncamelize' => 'uncamelize',
+    ];
+    $method = $ast['name'];
+    if (!array_key_exists($method, $map)) {
+      throw new \Exception("Function [_emitMcallString] - Method [{$method}] doesn't exist for String Object");
+    }
+
+    throw new \Exception("Function [_emitMcallString] - TODO Implement");
+  }
+
+  protected function _emitMcallArray($ast) {
+    $map = [
+      'join' => [
+        'function' => 'join',
+        'parameters' => '1*,O',
+        'inplace' => false
+      ],
+      'reversed' => [
+        'function' => 'array_reverse',
+        'parameters' => 'O,*'
+      ],
+      'rev' => [
+        'function' => 'array_reverse',
+        'parameters' => 'O,*'
+      ],
+      'diff' => [
+        'function' => 'array_diff',
+        'parameters' => 'O,*'
+      ],
+      'flip' => [
+        'function' => 'array_flip',
+        'parameters' => 'O'
+      ],
+      'fill' => [
+        'function' => 'array_fill',
+        'parameters' => 'O,*'
+      ],
+      'walk' => [
+        'function' => 'array_walk',
+        'parameters' => 'O,*'
+      ],
+      'haskey' => [
+        'function' => 'array_key_exists',
+        'parameters' => 'O,*'
+      ],
+      'keys' => [
+        'function' => 'array_keys',
+        'parameters' => 'O,*'
+      ],
+      'values' => [
+        'function' => 'array_values',
+        'parameters' => 'O'
+      ],
+      'split' => [
+        'function' => 'array_chunk',
+        'parameters' => 'O,*'
+      ],
+      'combine' => [
+        'function' => 'array_combine',
+        'parameters' => '*'
+      ],
+      'intersect' => [
+        'function' => 'array_intersect',
+        'parameters' => 'O,*'
+      ],
+      'merge' => [
+        'function' => 'array_merge',
+        'parameters' => 'O,*'
+      ],
+      'mergerecursive' => [
+        'function' => 'array_merge_recursive',
+        'parameters' => 'O,*'
+      ],
+      'pad' => [
+        'function' => 'array_pad',
+        'parameters' => 'O,*'
+      ],
+      'pop' => [
+        'function' => 'array_pop',
+        'parameters' => 'O'
+      ],
+      'push' => [
+        'function' => 'array_push',
+        'parameters' => 'O,*'
+      ],
+      'rand' => [
+        'function' => 'array_rand',
+        'parameters' => 'O,*'
+      ],
+      'replace' => [
+        'function' => 'array_replace',
+        'parameters' => 'O,*'
+      ],
+      'map' => [
+        'function' => 'array_map',
+        'parameters' => '1,O',
+      ],
+      'replacerecursive' => [
+        'function' => 'array_replace_recursive',
+        'parameters' => 'O,*'
+      ],
+      'shift' => [
+        'function' => 'array_shift',
+        'parameters' => 'O'
+      ],
+      'slice' => [
+        'function' => 'array_slice',
+        'parameters' => 'O,*'
+      ],
+      'splice' => [
+        'function' => 'array_splice',
+        'parameters' => 'O,*'
+      ],
+      'sum' => [
+        'function' => 'array_sum',
+        'parameters' => 'O'
+      ],
+      'unique' => [
+        'function' => 'array_unique',
+        'parameters' => 'O,*'
+      ],
+      'prepend' => [
+        'function' => 'array_unshift',
+        'parameters' => 'O,*'
+      ],
+      'count' => [
+        'function' => 'count',
+        'parameters' => 'O,*'
+      ],
+      'current' => [
+        'function' => 'current',
+        'parameters' => 'O'
+      ],
+      'each' => [
+        'function' => 'each',
+        'parameters' => 'O'
+      ],
+      'end' => [
+        'function' => 'end',
+        'parameters' => 'O'
+      ],
+      'key' => [
+        'function' => 'key',
+        'parameters' => 'O'
+      ],
+      'next' => [
+        'function' => 'next',
+        'parameters' => 'O'
+      ],
+      'prev' => [
+        'function' => 'prev',
+        'parameters' => 'O'
+      ],
+      'reset' => [
+        'function' => 'reset',
+        'parameters' => 'O'
+      ],
+      'sort' => [
+        'function' => 'sort',
+        'parameters' => 'O,*'
+      ],
+      'sortbykey' => [
+        'function' => 'ksort',
+        'parameters' => 'O,*'
+      ],
+      'reversesort' => [
+        'function' => 'rsort',
+        'parameters' => 'O,*'
+      ],
+      'reversesortbykey' => [
+        'function' => 'krsort',
+        'parameters' => 'O,*'
+      ],
+      'shuffle' => [
+        'function' => 'shuffle',
+        'parameters' => 'O'
+      ],
+      'tojson' => [
+        'function' => 'json_encode',
+        'parameters' => 'O,*'
+      ],
+      'reduce' => [
+        'function' => 'array_reduce',
+        'parameters' => 'O,*',
+      ],
+    ];
+    $method = $ast['name'];
+    if (!array_key_exists($method, $map)) {
+      throw new \Exception("Function [_emitMcallArray] - Method [{$method}] doesn't exist for Array Object");
+    }
+
+    $map_entry = $map[$method];
+    $method = $map_entry['function'];
+    $param_map = explode(',', $map_entry['parameters']);
+    $parameters = isset($ast['parameters']) ? $ast['parameters'] : null;
+
+    throw new \Exception("Function [_emitMcallArray] - TODO Implement");
   }
 
   protected function _emitFcall($ast) {
@@ -1234,6 +1545,23 @@ class Emitter implements IEmitter {
       }
     }
     echo ")";
+  }
+
+  protected function _emitNewType($ast) {
+    $type = $ast['internal-type'];
+    $parameters = isset($ast['parameters']) ? $ast['parameters'] : null;
+    switch ($type) {
+      case 'array':
+        // TODO : Verify if this is correct handling for zephir
+        echo '[]';
+        break;
+      case 'string':
+        // TODO: See the Actual Implementation to Verify if this is worth it
+        echo "''";
+        break;
+      default:
+        throw new \Exception("Function [_emitNewType] - Cannot build instance of type [{$type}]");
+    }
   }
 
   protected function _emitDouble($ast) {
@@ -1309,9 +1637,9 @@ class Emitter implements IEmitter {
       $this->$emitter($ast);
     } else {
       if (isset($prefix)) {
-        throw new \Exception("Handler for [{$prefix}], type [{$type}] NOT FOUND\n");
+        throw new \Exception("Function [_redirectAST] - Handler for [{$prefix}], type [{$type}] NOT FOUND");
       } else {
-        throw new \Exception("Handler for type [{$type}] NOT FOUND\n");
+        throw new \Exception("Function [_redirectAST] - Handler for type [{$type}] NOT FOUND");
       }
     }
     return true;
