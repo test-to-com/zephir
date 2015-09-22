@@ -108,4 +108,12 @@ class DeclareTest
 		var a = null;
 		return a;
 	}
+
+  public function testNestedDeclare1() {
+    int a = 1;
+    if(a === 1) {
+      int c=1;
+    }
+  }
+
 }

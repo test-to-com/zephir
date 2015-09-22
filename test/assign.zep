@@ -7,11 +7,11 @@ namespace Test;
 
 class Assign
 {
-	protected testVar { get };
+	protected testVar { get, set };
 
 	protected myArray { get };
 
-	protected static testVarStatic;
+	protected static testVarStatic { toString };
 
 	public function testAssign1()
 	{
