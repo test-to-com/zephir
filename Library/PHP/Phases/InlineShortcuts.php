@@ -1,0 +1,243 @@
+<?php
+
+/*
+  +--------------------------------------------------------------------------+
+  | Zephir Language                                                          |
+  +--------------------------------------------------------------------------+
+  | Copyright (c) 2013-2015 Zephir Team and contributors                     |
+  +--------------------------------------------------------------------------+
+  | This source file is subject the MIT license, that is bundled with        |
+  | this package in the file LICENSE, and is available through the           |
+  | world-wide-web at the following url:                                     |
+  | http://zephir-lang.com/license.html                                      |
+  |                                                                          |
+  | If you did not receive a copy of the MIT license and are unable          |
+  | to obtain it through the world-wide-web, please send a note to           |
+  | license@zephir-lang.com so we can mail you a copy immediately.           |
+  +--------------------------------------------------------------------------+
+ */
+
+namespace Zephir\PHP\Phases;
+
+use Zephir\Common\Phase as IPhase;
+
+/**
+ * Normalizes the IR Ast to make for easier parsing
+ * 
+ * @author Paulo Ferreira <pf at sourcenotes.org>
+ */
+class InlineShortcuts implements IPhase {
+
+  // Mixins
+  use \Zephir\Common\Mixins\DI;
+
+  protected $_comments = [];
+
+  /**
+   * Process the AST
+   * 
+   * @param array $ast AST to be processed
+   * @return array Old or Transformed AST
+   */
+  public function top($ast) {
+    return $ast;
+  }
+
+  /**
+   * Process Class or Interface Constant
+   * 
+   * @param array $class Class Definition
+   * @param array $constant Class Constant Definition
+   * @return array New Constant Definition, 'NULL' if to be removed
+   * @throws \Exception On error Parsing Constant
+   */
+  public function constant(&$class, $constant) {
+    return $constant;
+  }
+
+  /**
+   * Process Class or Interface Property
+   * 
+   * @param array $class Class Definition
+   * @param array $property Class Property Definition
+   * @return array New Property Definition, 'NULL' if to be removed
+   * @throws \Exception On error Parsing Property
+   */
+  public function property(&$class, $property) {
+    // Does the Property have Shortcuts Defined?
+    $shortcuts = isset($property['shortcuts']) ? $property['shortcuts'] : null;
+    if (isset($shortcuts)) { // YES
+      $methods = [];
+
+      // Process All of the Properties Shortcuts
+      $processed = [];
+      foreach ($shortcuts as $shortcut) {
+        // Have we already processed the shortcut?
+        if (in_array($shortcut['name'], $processed)) { // YES
+          throw new \Exception("Shortcut [{$shortcut['name']}] is used multiple times in Property [{$property['name']}].");
+        }
+
+        // Create Method for Shortcut
+        $method = $this->_expandShortcut($property, $shortcut);
+        if (isset($method)) {
+          $methods[] = $method;
+        }
+
+        // Add Shortcut to List of Processed Shortcuts
+        $processed[] = $shortcut['name'];
+      }
+
+      // Do we have Shortcuts to Add?
+      if (count($methods)) { // YES        
+        $classMethods = $this->_getMethodsDefinition($class);
+        foreach ($methods as $method) {
+          $name = $method['name'];
+          if (array_key_exists($name, $classMethods)) {
+            $message = "Property [{$property['name']}] Shortcut Method [{$name}] already exists.";
+            if (isset($classMethods[$name]['shortcut'])) {
+              $message.=" Shortcut used in property [{$classMethods[$name]['shortcut']}]";
+            }
+            throw new \Exception($message);
+          }
+
+          $classMethods[$name] = $method;
+        }
+
+        // Update Class
+        $class['methods'] = $classMethods;
+      }
+
+      unset($property['shortcuts']);
+    }
+
+    return $property;
+  }
+
+  /**
+   * Process Class or Interface Method
+   * 
+   * @param array $class Class Definition
+   * @param array $method Class Method Definition
+   * @return array New Property Definition, 'NULL' if to be removed
+   */
+  public function method(&$class, $method) {
+    return $method;
+  }
+
+  /**
+   * 
+   * @param type $class
+   * @return array
+   */
+  protected function _getMethodsDefinition(&$class) {
+
+    if (!isset($class['methods'])) {
+      $class['methods'] = [];
+    }
+
+    return $class['methods'];
+  }
+
+  protected function _expandShortcut($property, $shortcut) {
+    // Shortcut Type
+    $type = $shortcut['name'];
+
+
+    // Basic Function Definition
+    $methodName = $type === 'toString' ? '__toString' : $shortcut['name'] . ucfirst($property['name']);
+    $method = [
+      'visibility' => ['public'],
+      'type' => 'method',
+      'name' => $methodName,
+      'parameters' => [],
+      'locals' => [],
+      'statements' => [],
+      // Add an Extra Property to Mark the Method as Creatd by Shortcut for a Property
+      'shortcut' => $property['name']
+    ];
+
+    switch ($type) {
+      case 'toString':
+      case 'get':
+        $method['statements'][] = [
+          'type' => 'return',
+          'expr' => [
+            'type' => 'property-access',
+            'left' => [
+              'type' => 'variable',
+              'value' => 'this',
+              'file' => $shortcut['file'],
+              'line' => $shortcut['line'],
+              'char' => $shortcut['char'],
+            ],
+            'right' => [
+              'type' => 'variable',
+              'value' => $property['name'],
+              'file' => $shortcut['file'],
+              'line' => $shortcut['line'],
+              'char' => $shortcut['char'],
+            ],
+            'file' => $shortcut['file'],
+            'line' => $shortcut['line'],
+            'char' => $shortcut['char'],
+          ],
+          'file' => $shortcut['file'],
+          'line' => $shortcut['line'],
+          'char' => $shortcut['char'],
+        ];
+        break;
+      case 'set':
+        // Add Parameter to Function
+        $pname = "__p_{$property['name']}__";
+        $method['parameters'][] = [
+          'type' => 'parameter',
+          'name' => $pname,
+          'const' => 0,
+          'data-type' => 'variable',
+          'mandatory' => 0,
+          'reference' => 0,
+          'file' => $shortcut['file'],
+          'line' => $shortcut['line'],
+          'char' => $shortcut['char'],
+        ];
+
+        /* TODO: See if Class Properties Can have Declared Types
+         * If so, we need to add a declared type
+          'cast' => [
+          'type' => 'variable',
+          'value' => 'DiInterface',
+          'file' => '/home/pj/WEBPROJECTS/zephir/test/router.zep',
+          'line' => 107,
+          'char' => 55,
+          ],
+         */
+        $method['statements'][] = [
+          'type' => 'let',
+          'assignments' => [
+            [
+              'assign-type' => 'object-property',
+              'operator' => 'assign',
+              'variable' => 'this',
+              'property' => $property['name'],
+              'expr' => [
+                'type' => 'variable',
+                'value' => $pname,
+                'file' => $shortcut['file'],
+                'line' => $shortcut['line'],
+                'char' => $shortcut['char'],
+              ],
+              'file' => $shortcut['file'],
+              'line' => $shortcut['line'],
+              'char' => $shortcut['char'],
+            ],
+          ],
+          'file' => $shortcut['file'],
+          'line' => $shortcut['line'],
+          'char' => $shortcut['char'],
+        ];
+    }
+
+    return $method;
+  }
+
+}

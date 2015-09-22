@@ -1,0 +1,294 @@
+<?php
+
+/*
+  +--------------------------------------------------------------------------+
+  | Zephir Language                                                          |
+  +--------------------------------------------------------------------------+
+  | Copyright (c) 2013-2015 Zephir Team and contributors                     |
+  +--------------------------------------------------------------------------+
+  | This source file is subject the MIT license, that is bundled with        |
+  | this package in the file LICENSE, and is available through the           |
+  | world-wide-web at the following url:                                     |
+  | http://zephir-lang.com/license.html                                      |
+  |                                                                          |
+  | If you did not receive a copy of the MIT license and are unable          |
+  | to obtain it through the world-wide-web, please send a note to           |
+  | license@zephir-lang.com so we can mail you a copy immediately.           |
+  +--------------------------------------------------------------------------+
+ */
+
+namespace Zephir\PHP\Stages;
+
+use Zephir\Common\Stage as IStage;
+use Zephir\PHP\Phases\InlineComments;
+use Zephir\PHP\Phases\InlineShortcuts;
+
+/**
+ * Normalizes the IR Ast to make for easier parsing
+ * 
+ * @author Paulo Ferreira <pf at sourcenotes.org>
+ */
+class Compact implements IStage {
+
+  // Mixins
+  use \Zephir\Common\Mixins\DI;
+
+  /**
+   * Initialize the Stage Instance
+   * 
+   * @return self Return instance of stage for Function Linking.
+   */
+  public function initialize() {
+    return $this;
+  }
+
+  /**
+   * Compile or Transform the AST.
+   * 
+   * @param array $ast AST to be compiled/transformed
+   * @return array Old or Transformed AST
+   */
+  public function compile($ast) {
+    $newAST = [];
+
+    foreach ($ast as $index => $entry) {
+
+      if ($entry['type'] === 'class') {
+        $entry = $this->_compactClass($entry);
+      }
+
+      if (isset($entry)) {
+        // Add Entry to List of Statements
+        $newAST[] = $entry;
+      }
+    }
+
+    return $newAST;
+  }
+
+  /**
+   * Converts a Comment AST Entry into a Comment Block Entry, to be merged into
+   * the AST of the Next Statement Block
+   * 
+   * @param array $ast Comment AST
+   * @return array Comment Block Entry or Null, if an empty comment
+   */
+  protected function _compactClass($class) {
+
+    // Get Class Definition
+    $definition = isset($class['definition']) ? $class['definition'] : null;
+    if (isset($definition)) {
+
+      // Do we have Class Constants to Process?
+      $map = [];
+      $constants = isset($definition['constants']) ? $definition['constants'] : null;
+      if (isset($constants)) { // YES
+        // Convert Constants Array to Constants Map
+        foreach ($constants as $constant) {
+          $key = $constant['name'];
+          if (array_key_exists($key, $map)) {
+            throw new \Exception("Duplicate constant [{$key}] definition.");
+          }
+          $map[$key] = $constant;
+        }
+
+        // Remove Constants Definition
+        unset($class['definition']['constants']);
+      }
+
+      // Create Properties Map
+      $class['constants'] = $map;
+
+      // Do we have Class Properties to Process?
+      $map = [];
+      $properties = isset($definition['properties']) ? $definition['properties'] : null;
+      if (isset($properties)) { // YES
+        // Convert Properties Array to Properties Map
+        foreach ($properties as $property) {
+          $key = $property['name'];
+          if (array_key_exists($key, $map)) {
+            throw new \Exception("Duplicate property [{$key}] definition.");
+          }
+          $map[$key] = $property;
+        }
+
+        // Remove Properties Definition
+        unset($class['definition']['properties']);
+      }
+
+      // Create Properties Map
+      $class['properties'] = $map;
+
+      // Do we have Class Methods to Process?
+      $map = [];
+      $methods = isset($definition['methods']) ? $definition['methods'] : null;
+      if (isset($methods)) { // YES
+        // Convert Methods Array to Methods Map
+        foreach ($methods as $method) {
+          $key = $method['name'];
+          if (array_key_exists($key, $map)) {
+            throw new \Exception("Duplicate method [{$key}] definition.");
+          }
+
+          // Compact Method
+          $method = $this->_compactMethod($method);
+
+          // Add Entry to Map
+          $map[$key] = $method;
+        }
+
+        // Remove Methods Array
+        unset($class['definition']['methods']);
+      }
+
+      // Create Methods Map
+      $class['methods'] = $map;
+
+      // Clear Class Definitions
+      $class['definition'];
+    } else {
+      $class['constants'] = [];
+      $class['properties'] = [];
+      $class['methods'] = [];
+    }
+
+    return $class;
+  }
+
+  protected function _compactMethod($method) {
+    // Normalize Method Definition - So that we don't always have to test for the existance of
+    if (!isset($method['parameters'])) {
+      $method['parameters'] = [];
+    }
+    if (!isset($method['statements'])) {
+      $method['statements'] = [];
+    }
+    $method['locals'] = [];
+
+    // Compact Method Statements
+    $method['statements'] = $this->_compactStatementBlock($method, $method['statements']);
+
+    return $method;
+  }
+
+  protected function _compactStatementBlock(&$method, $block) {
+    // Convert Declares into Local Variable Declarations and LET Statements for defaults
+    $statements = [];
+    foreach ($block as $statement) {
+      $type = $statement['type'];
+
+      // Is the Statement a DECLARE?
+      if ($type === 'declare') { // YES:
+        $statements = array_merge($statements, $this->_compactDeclare($method, $statement));
+        continue;
+      }
+
+      // For Complex Statements (i.e. statements with statement blocks)
+      switch ($statement['type']) {
+        case 'for':
+        case 'loop':
+        case 'while':
+        case 'doWhile':
+          if (isset($statement['statements'])) {
+            $statement['statements'] = $this->_compactStatementBlock($method, $statement['statements']);
+          }
+          /* TODO Handle Trailing comments 
+           * i.e. comments that come after all the statements in a block.
+           * 
+           * example:
+           * loop 
+           * {
+           *   a +=1;
+           *   // Trailing Comment
+           * }
+           * 
+           * Currently these comments are dropped
+           */
+          break;
+        case 'if':
+          // Process If (TRUE) block
+          if (isset($statement['statements'])) {
+            $statement['statements'] = $this->_compactStatementBlock($method, $statement['statements']);
+          }
+          // Process If (OTHER CONDITIONS) block
+          if (isset($statement['elseif_statements'])) {
+            $elseifs = [];
+            foreach ($statement['elseif_statements'] as $elseif) {
+              $elseif['statements'] = $this->_compactStatementBlock($method, $elseif['statements']);
+              $elseifs[] = $elseif;
+            }
+            $statement['elseif_statements'] = $elseifs;
+          }
+          // Process If (FALSE) block
+          if (isset($statement['else_statements'])) {
+            $statement['else_statements'] = $this->_compactStatementBlock($method, $statement['else_statements']);
+          }
+          break;
+        case 'switch':
+          // Process If (OTHER CONDITIONS) block
+          if (isset($statement['clauses'])) {
+            $clauses = [];
+            foreach ($statement['clauses'] as $clause) {
+              $clause['statements'] = $this->_compactStatementBlock($method, $clause['statements']);
+              $clauses[] = $clause;
+            }
+            $statement['clauses'] = $clauses;
+          }
+          break;
+      }
+
+      // Add Statement to List of Statements
+      $statements[] = $statement;
+    }
+
+    return $statements;
+  }
+
+  protected function _compactDeclare(&$method, $statement) {
+    $lets = [];
+    $data_type = $statement['data-type'];
+    foreach ($statement['variables'] as $variable) {
+      // Normalize Declaration
+      $variable['name'] = $variable['variable'];
+      $variable['data-type'] = $data_type;
+      unset($variable['variable']);
+
+      // Does the variable have an initial value set?
+      $let = $this->_createLetFromDeclare($variable);
+      if (isset($let)) { // YES: Convert to Assignement
+        $lets[] = $let;
+        unset($variable['expr']);
+      }
+
+      // Add Declaration to Method Locals List
+      $method['locals'][$variable['name']] = $variable;
+    }
+
+    return $lets;
+  }
+
+  protected function _createLetFromDeclare($variable) {
+    if (isset($variable['expr'])) {
+      return [
+        'type' => 'let',
+        'assignments' => [
+          [
+            'assign-type' => 'variable',
+            'operator' => 'assign',
+            'variable' => $variable['name'],
+            'expr' => $variable['expr'],
+            'file' => $variable['file'],
+            'line' => $variable['line'],
+            'char' => $variable['char'],
+          ]
+        ],
+        'file' => $variable['file'],
+        'line' => $variable['line'],
+        'char' => $variable['char'],
+      ];
+    }
+
+    return null;
+  }
+
+}
