@@ -17,7 +17,7 @@
   +--------------------------------------------------------------------------+
  */
 
-namespace Zephir\API\DI;
+namespace Zephir\Common;
 
 /**
  * Injected Service
@@ -77,7 +77,7 @@ interface Service {
    * @param Zephir\API\DI dependencyInjector
    * @return mixed
    */
-  public function resolve($parameters = null, \Zephir\API\DI $dependencyInjector);
+  public function resolve($parameters = null, DI $dependencyInjector);
 
   /**
    * Restore the interal state of a service

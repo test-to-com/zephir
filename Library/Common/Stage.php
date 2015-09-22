@@ -17,28 +17,27 @@
   +--------------------------------------------------------------------------+
  */
 
-namespace Zephir\API\DI;
+namespace Zephir\Common;
 
 /**
- * DI capable object
- * 
- * Based Directly on Phalcon\Di\InjectionAwareInterface;
+ * Compiler Stage Definition
  * 
  * @author Paulo Ferreira <pf at sourcenotes.org>
  */
-interface InjectionAware {
+interface Stage extends InjectionAware {
 
   /**
-   * Sets the dependency injector
+   * Initialize the Stage Instance
    * 
-   * @param \Zephir\API\DI $dependencyInjector
+   * @return self Return instance of stage for Function Linking.
    */
-  public function setDI(\Zephir\API\DI $dependencyInjector);
+  public function initialize();
 
   /**
-   * Returns the internal dependency injector
+   * Compile or Transform the AST.
    * 
-   * @return \Zephir\API\DI
+   * @param array $ast AST to be compiled/transformed
+   * @return array Old or Transformed AST
    */
-  public function getDI();
+  public function compile($ast);
 }

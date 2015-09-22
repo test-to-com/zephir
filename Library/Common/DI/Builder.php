@@ -19,7 +19,7 @@
 
 namespace Zephir\DI;
 
-use Zephir\API\DI;
+use Zephir\Common\DI;
 
 require_once __DIR__ . '/../../builtin.php';
 
@@ -35,7 +35,7 @@ class Builder {
   /**
    * Resolves a constructor/call parameter
    *
-   * @param \Zephir\API\DI dependencyInjector
+   * @param \Zephir\Common\DI dependencyInjector
    * @param int position
    * @param array argument
    * @return mixed
@@ -122,7 +122,7 @@ class Builder {
   /**
    * Resolves an array of parameters
    *
-   * @param Phalcon\DiInterface dependencyInjector
+   * @param \Zephir\Common\DI dependencyInjector
    * @param array arguments
    * @return array
    */
@@ -144,7 +144,7 @@ class Builder {
   /**
    * Builds a service using a complex service definition
    *
-   * @param Phalcon\DiInterface dependencyInjector
+   * @param \Zephir\Common\DI dependencyInjector
    * @param array definition
    * @param array parameters
    * @return mixed

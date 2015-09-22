@@ -17,7 +17,9 @@
   +--------------------------------------------------------------------------+
  */
 
-namespace Zephir\API;
+namespace Zephir\Common;
+
+use Zephir\Common\Service;
 
 /**
  * Dependence Injection 
@@ -87,7 +89,7 @@ interface DI extends \ArrayAccess {
    * 
    * @return \Zephir\API\DI\Service
    */
-  public function setRaw($name, \Zephir\API\DI\Service $rawDefinition);
+  public function setRaw($name, Service $rawDefinition);
 
   /**
    * Returns a service definition without resolving
@@ -130,7 +132,7 @@ interface DI extends \ArrayAccess {
    * 
    * @return \Zephir\API\DI
    */
-  public static function setDefault(\Zephir\API\DI $dependencyInjector);
+  public static function setDefault(DI $dependencyInjector);
 
   /**
    * Return the last DI created

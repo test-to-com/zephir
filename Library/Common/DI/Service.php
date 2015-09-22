@@ -17,12 +17,12 @@
   +--------------------------------------------------------------------------+
  */
 
-namespace Zephir\DI;
+namespace Zephir\Common\DI;
 
-use Zephir\API\DI as IDI;
-use Zephir\API\DI\Service as IService;
+use Zephir\Common\DI as IDI;
+use Zephir\Common\Service as IService;
 
-require_once __DIR__ . '/../../builtin.php';
+require_once __DIR__ . '/../../../builtin.php';
 
 /**
  * Dependency Injection Service Implementation
