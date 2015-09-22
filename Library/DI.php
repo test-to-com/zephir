@@ -19,10 +19,10 @@
 
 namespace Zephir;
 
-use Zephir\API\DI as IDI;
-use Zephir\API\DI\Service as IService;
-use Zephir\API\DI\InjectionAware;
-use Zephir\DI\Service;
+use Zephir\Common\DI as IDI;
+use Zephir\Common\Service as IService;
+use Zephir\Common\InjectionAware as IInjectionAware;
+use Zephir\Common\DI\Service;
 
 require_once __DIR__ . '/../builtin.php';
 
@@ -205,7 +205,7 @@ class DI implements IDI {
      * Pass the DI itself if the instance implements \Phalcon\Di\InjectionAwareInterface
      */
     if (gettype($instance) == "object") {
-      if ($instance instanceof InjectionAware) {
+      if ($instance instanceof IInjectionAware) {
         $instance->setDI($this);
       }
     }

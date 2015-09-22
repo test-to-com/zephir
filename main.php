@@ -16,7 +16,6 @@ $di = new \Zephir\DI;
 
 // Set the File System
 $di->set("fileSystem", "\Zephir\FileSystem\HardDisk", true);
-$di->set("emitter", "\Zephir\PHP\Emitter", true);
 
 /*
  * commands
@@ -119,10 +118,23 @@ if (isset($input_file)) {
 echo "Output Directory [{$output_dir}]\n";
 echo "Temporary Directory [{$tmp_dir}]\n";
 
+$di->set("compiler", "\Zephir\PHP\Compiler", true);
+$di->set("compiler-stages", function() {
+  return [
+    "\Zephir\PHP\Stages\Compact"
+    ,"\Zephir\PHP\Stages\Process"
+    ,"\Zephir\PHP\Stages\EmitCode"
+  ];
+}, true);
+
+// Initialize the Compiler
+$compiler = $di['compiler'];
+$compiler->initialize();
+
 // Are we parsing a Single File?
-$emitter = $di['emitter'];
 if (isset($input_file)) { // YES
-  $emitter->file($input_file);
+//  var_dump($compiler->file($input_file));
+  $compiler->file($input_file);
 } else { // NO: Parsing Entire Directory
-  $emitter->files($input_dir);
+  $compiler->files($input_dir);
 }
