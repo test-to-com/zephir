@@ -87,7 +87,7 @@ class InlineComments implements IPhase {
       }
     }
 
-    return $property;
+    return $constant;
   }
 
   /**

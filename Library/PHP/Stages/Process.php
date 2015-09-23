@@ -22,6 +22,7 @@ namespace Zephir\PHP\Stages;
 use Zephir\Common\Stage as IStage;
 use Zephir\PHP\Phases\InlineComments;
 use Zephir\PHP\Phases\InlineShortcuts;
+use Zephir\PHP\Phases\InlineNormalize;
 
 /**
  * Normalizes the IR Ast to make for easier parsing
@@ -54,6 +55,7 @@ class Process implements IStage {
     // Create Phases
     $this->_phases[] = new InlineComments();
     $this->_phases[] = new InlineShortcuts();
+    $this->_phases[] = new InlineNormalize();
 
     // Initialize Phases
     $di = $this->getDI();

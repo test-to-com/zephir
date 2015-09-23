@@ -22,7 +22,7 @@ namespace Zephir\PHP\Phases;
 use Zephir\Common\Phase as IPhase;
 
 /**
- * Normalizes the IR Ast to make for easier parsing
+ * Inline Expand Property Shortcuts
  * 
  * @author Paulo Ferreira <pf at sourcenotes.org>
  */
@@ -30,8 +30,6 @@ class InlineShortcuts implements IPhase {
 
   // Mixins
   use \Zephir\Common\Mixins\DI;
-
-  protected $_comments = [];
 
   /**
    * Process the AST
