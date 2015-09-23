@@ -95,12 +95,12 @@ class Compiler implements ICompiler {
         $fs = $this->getDI()['fileSystem'];
 
         // Emite PHP Code for all the ZEP files in the Directory
-        $emitter = $this;
+        $compiler = $this;
         $fs->enumerateFiles(function($path) use($emitter) {
           $count_path = strlen($path);
           $extension = $count_path > 4 ? strtolower(substr($path, $count_path - 4)) : null;
           if (isset($extension) && ($extension === '.zep')) {
-            $emitter->file($path);
+            $compiler->file($path);
           }
           return true;
         });
@@ -119,10 +119,15 @@ class Compiler implements ICompiler {
 
     // Generate IR for File
     $phpFile = $this->_genIR($path);
+    $ast = $fs->requireFile($phpFile);
 
+    // Was there a Problem Parsing the File?
+    if(isset($ast['type']) && ($ast['type'] === 'error')) { // YES
+      throw new \Exception("ERROR: {$ast['message']} in File[{$ast['file']}]");      
+    }
+    
     // Run the Stages for the Compiler
     $stages = $this->getStages();
-    $ast = $fs->requireFile($phpFile);
     foreach ($stages as $index => $stage) {
       // Compile the AST
       $ast = $stage->compile($ast);
