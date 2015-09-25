@@ -31,6 +31,17 @@ class EmitCode implements IStage {
   // Mixins
   use \Zephir\Common\Mixins\DI;
 
+  // Spaces for Indent
+  const spaces = '         ';
+  const tabs = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+
+  protected $_current_line = '';
+  protected $_current_length = 0;
+  protected $_indent_level = 0;
+  // TODO: Maybe Create a Compile Context Object so as to simplify handlers
+  // Processing a Right Expression (i.e. for variables this means dropping the '$');
+  protected $_right = false;
+
   /**
    * Initialize the Stage Instance
    * 
@@ -48,37 +59,278 @@ class EmitCode implements IStage {
    */
   public function compile($ast) {
     echo "<?php\n";
-    foreach ($ast as $index => $entry) {
+    $this->_processStatementBlock($ast);
+    /*
+      foreach ($ast as $index => $entry) {
       $this->_redirectAST($entry['type'], $entry);
-    }
+      }
+     */
     echo "?>\n";
 
     return $ast;
   }
 
-  protected function _redirectAST($type, $ast, $prefix = null) {
-    $type = ucfirst($type);
-    if (strpos($type, '-') !== FALSE) {
-      $type = implode('', array_map('ucfirst', explode('-', $type)));
+  protected function _append($content, $flush = false) {
+    // Is the Content an Array?
+    if (is_array($content)) { // YES: Build a Space Seperated String of the array
+      $content = implode(' ', array_map(function ($e) {
+          return trim($e);
+        }, $content));
     }
-    if (strpos($type, '_') !== FALSE) {
-      $type = implode('', array_map('ucfirst', explode('_', $type)));
+
+    // Is the Current Line Empty?
+    if ($this->_current_length === 0) { // YES
+      $this->_current_line = trim($content);
+    } else { // NO: Append
+      $this->_current_line.=' ' . trim($content);
     }
-    if (isset($prefix)) {
-      $emitter = '_emit' . ucfirst($prefix) . $type;
+    $this->_current_length = strlen($this->_current_line);
+
+    if ($flush) {
+      $this->_flush();
+    }
+  }
+
+  protected function _appendEOS($flush = true) {
+    $this->_append(';', $flush);
+  }
+
+  protected function _flush($force = false) {
+    if ($this->_current_length) {
+      echo $this->_indentation() . trim($this->_current_line) . "\n";
+      $this->_current_line = '';
+      $this->_current_length = 0;
+    } else if ($force) {
+      echo "\n";
+    }
+  }
+
+  protected function _indent($indent = true) {
+    if ($indent) {
+      $this->_indent_level++;
+    }
+  }
+
+  protected function _unindent($unindent = true) {
+    if ($unindent) {
+      $this->_indent_level--;
+    }
+
+    if ($this->_indent_level < 0) {
+      throw new Exception("Indentation Level CANNOT BE less than ZERO");
+    }
+  }
+
+  protected function _indentation() {
+    // TODO: Move to the Flags to Configuration File
+    $config_indentSpaces = true; // Seperate interface / extends with line-feed
+    $config_indentSize = 2; // Seperate interface / extends with line-feed
+    $config_indentMax = 10; // Maximum of 10 Indent Levels
+    // Create Indent Filler Unit
+    if ($config_indentSpaces) {
+      $filler = substr(self::spaces, 0, $config_indentSize <= 10 ? $config_indentSize : 10);
     } else {
-      $emitter = '_emit' . $type;
+      $filler = "\t";
     }
-    if (method_exists($this, $emitter)) {
-      $this->$emitter($ast);
+
+    // Calculate Filler
+    $indent = $this->_indent_level > $config_indentMax ? $config_indentMax : $this->_indent_level;
+    $filler = str_repeat($filler, $indent);
+    return $filler;
+  }
+
+  protected function _processStatementBlock($block, $class = null, $method = null) {
+    // Process Statement Block
+    foreach ($block as $statement) {
+      // Process Current Statement
+      $this->_processStatement($statement, $class, $method);
+    }
+  }
+
+  protected function _processStatement($statement, $class = null, $method = null) {
+    $type = $statement['type'];
+    $handler = $this->_handlerName("_statement", ucfirst($type));
+    if (method_exists($this, $handler)) {
+      return $this->$handler($statement, $class, $method);
+    } else if (method_exists($this, "_statementDEFAULT")) {
+      return $this->$handler($statement, $class, $method);
     } else {
-      if (isset($prefix)) {
-        throw new \Exception("Function [_redirectAST] - Handler for [{$prefix}], type [{$type}] NOT FOUND");
-      } else {
-        throw new \Exception("Function [_redirectAST] - Handler for type [{$type}] NOT FOUND");
+      throw new \Exception("Unhandled statement type [{$type}] in line [{$statement['line']}]");
+    }
+  }
+
+  protected function _processExpression($expression, $class = null, $method = null) {
+    $type = $expression['type'];
+    $handler = $this->_handlerName("_expression", ucfirst($type));
+    if (method_exists($this, $handler)) {
+      return $this->$handler($expression, $class, $method);
+    } else if (method_exists($this, "_expressionDEFAULT")) {
+      return $this->$handler($expression, $class, $method);
+    } else {
+      throw new \Exception("Unhandled expression type [{$type}] in line [{$expression['line']}]");
+    }
+  }
+
+  protected function _statementNamespace($namespace, $class, $method) {
+    $this->_append(['namespace', "{$namespace['name']};"], true);
+  }
+
+  protected function _statementClass($class) {
+    /*
+      class_declaration_statement:
+      class_modifiers T_CLASS { $<num>$ = CG(zend_lineno); }
+      T_STRING extends_from implements_list backup_doc_comment '{' class_statement_list '}'
+      { $$ = zend_ast_create_decl(ZEND_AST_CLASS, $1, $<num>3, $7, zend_ast_get_str($4), $5, $6, $9, NULL); }
+      |	T_CLASS { $<num>$ = CG(zend_lineno); }
+      T_STRING extends_from implements_list backup_doc_comment '{' class_statement_list '}'
+      { $$ = zend_ast_create_decl(ZEND_AST_CLASS, 0, $<num>2, $6, zend_ast_get_str($3), $4, $5, $8, NULL); }
+      ;
+     * 
+      class_modifiers:
+      class_modifier 					{ $$ = $1; }
+      |	class_modifiers class_modifier 	{ $$ = zend_add_class_modifier($1, $2); }
+      ;
+     * 
+      class_modifier:
+      T_ABSTRACT 		{ $$ = ZEND_ACC_EXPLICIT_ABSTRACT_CLASS; }
+      |	T_FINAL 		{ $$ = ZEND_ACC_FINAL; }
+      ;
+     */
+
+    /*
+     * CLASS HEADER
+     */
+    $this->_flush();
+    if ($class['final']) {
+      $this->_append('final');
+    } else if ($class['abstract']) {
+      $this->_append('abstract');
+    }
+
+    // TODO: Move to the Flag to Configuration File
+    $config_classLFImplements = true; // Seperate class / implements with line-feed
+    $config_classNLImplements = true; // Multiple Implements on Seperate Lines
+    $this->_append(["class", $class['name']]);
+    $implements = isset($ast['implements']) ? $ast['implements'] : null;
+    if (isset($implements)) {
+      $this->_flush($config_classLFImplements);
+      $this->_indent($config_classLFImplements);
+      $this->_append('implements');
+      $first = true;
+      foreach ($implements as $interace) {
+        if (!$first) {
+          $this->_append(',', $config_classNLImplements);
+        }
+        $this->_emitVariable($interace, true);
+        $first = false;
+      }
+      /* TODO Handle Case in Which we have implements (but not extends with respect to
+       * line feeds see oo/oonativeinterfaces
+       */
+      $this->_unindent($config_classLFImplements);
+    }
+    $extends = isset($class['extends']) ? $class['extends'] : null;
+
+    // TODO: Move to the Flag to Configuration File
+    $config_classLFExtends = true;            // Seperate class / extends with line-feed
+    $config_classLFImplementExtends = true;   // Seperate implment/extends with line-feed
+
+    if (isset($extends)) {
+      // Add Line Feed before Extends?
+      $lf = (!isset($implements) && $config_classLFExtends) ||
+        ($config_classLFImplementExtends && isset($implements));
+
+      $this->_flush($lf);
+      $this->_indent($lf);
+      $this->_append(['extends', $extends]);
+      $this->_unindent($lf);
+    }
+
+    // TODO: Move to the Flag to Configuration File
+    $config_classLFStartBlock = true; // class '{' on new line?
+    $this->_flush($config_classLFStartBlock);
+    $this->_append('{', true);
+    $this->_indent();
+
+    /*
+     * CLASS BODY
+     */
+
+    // Emit the Various Sections
+    $section_order = ['constants', 'properties', 'methods'];
+    foreach ($section_order as $order) {
+      $section = isset($class[$order]) ? $class[$order] : null;
+      if (isset($section)) {
+        $handler = $this->_handlerName('_emitClass', $order);
+        if (method_exists($this, $handler)) {
+          $this->$handler($class, $section);
+        } else {
+          throw new \Exception("Unhandled section type [{$order}]");
+        }
       }
     }
-    return true;
+
+    /*
+     * CLASS FOOTER
+     */
+
+    // Garauntee that we flush any pending lines
+    $this->_flush();
+    $this->_unindent();
+    $this->_append('}', true);
+  }
+
+  protected function _statementInterface($interface) {
+
+    /*
+     * INTERFACE HEADER
+     */
+    $this->flush();
+    $this->_append(["interface", $interface['name']]);
+
+    // TODO: Move to the Flag to Configuration File
+    $config_interfaceLFExtends = true; // Seperate interface / extends with line-feed
+
+    $extends = isset($interface['extends']) ? $interface['extends'] : null;
+    if (isset($extends)) {
+      $this->_flush($config_interfaceLFExtends);
+      $this->_indent($config_interfaceLFExtends);
+      $this->_append(['extends', $extends]);
+      $this->_unindent($config_interfaceLFExtends);
+    }
+
+    // TODO: Move to the Flag to Configuration File
+    $config_interfaceLFStartBlock = true; // interface '{' on new line?
+    $this->_flush($config_interfaceLFStartBlock);
+    $this->_append('{', true);
+    $this->_indent();
+
+    /*
+     * INTERFACE BODY
+     */
+
+    // Emit the Various Sections
+    $section_order = ['constants', 'properties', 'methods'];
+    foreach ($section_order as $order) {
+      $section = isset($interface[$order]) ? $interface[$order] : null;
+      if (isset($section)) {
+        $handler = $this->_handlerName('_emitClass', $section);
+        if (method_exists($this, $handler)) {
+          $this->$handler($interface, $section);
+        } else {
+          throw new \Exception("Unhandled section type [{$section}]");
+        }
+      }
+    }
+
+    /*
+     * CLASS FOOTER
+     */
+
+    // Garauntee that we flush any pending lines
+    $this->_flush();
+    $this->_unindent();
+    $this->_append('}', true);
   }
 
   protected function _emitComment($ast) {
@@ -94,235 +346,120 @@ class EmitCode implements IStage {
     echo "/{$ast['value']}/\n";
   }
 
-  protected function _emitNamespace($ast) {
-    /* TODO:
-     * Space between 'namespace' and {name}
-     */
-    echo "namespace {$ast['name']};\n";
+  protected function _emitClassConstants($class, $constants) {
+    // Do we have constants to output?
+    if (isset($constants) && is_array($constants)) { // YES
+      // TODO: Move to the Flag to Configuration File
+      $config_sortConstants = true; // Sort Class or Interface Constants?
+      if ($config_sortConstants) {
+        ksort($constants);
+      }
+
+      /* const CONSTANT = 'constant value'; */
+      foreach ($constants as $name => $constant) {
+        $this->_append(['const', $name, '=']);
+        $this->_processExpression($constant['default'], $class);
+        $this->_appendEOS();
+      }
+    }
   }
 
-  protected function _emitClass($ast) {
-    /*
-      class_declaration_statement:
-      class_modifiers T_CLASS { $<num>$ = CG(zend_lineno); }
-      T_STRING extends_from implements_list backup_doc_comment '{' class_statement_list '}'
-      { $$ = zend_ast_create_decl(ZEND_AST_CLASS, $1, $<num>3, $7, zend_ast_get_str($4), $5, $6, $9, NULL); }
-      |	T_CLASS { $<num>$ = CG(zend_lineno); }
-      T_STRING extends_from implements_list backup_doc_comment '{' class_statement_list '}'
-      { $$ = zend_ast_create_decl(ZEND_AST_CLASS, 0, $<num>2, $6, zend_ast_get_str($3), $4, $5, $8, NULL); }
-      ;
-     * 
-      class_modifiers:
-      class_modifier 					{ $$ = $1; }
-      |	class_modifiers class_modifier 	{ $$ = zend_add_class_modifier($1, $2); }
-      ;
-     * 
-      class_modifier:
-      T_ABSTRACT 		{ $$ = ZEND_ACC_EXPLICIT_ABSTRACT_CLASS; }
-      |	T_FINAL 		{ $$ = ZEND_ACC_FINAL; }
-      ;
-     */
+  protected function _emitClassProperties($class, $properties) {
+    // Do we have properties to output?
+    if (isset($properties) && is_array($properties)) { // YES
+      // TODO: Move to the Flag to Configuration File
+      $config_sortProperties = true; // Sort Class or Interface Properties?
+      if ($config_sortProperties) {
+        ksort($properties);
+      }
 
-
-    /* TODO:
-     * Space between $modifiers and and {name}
-     * Carriage Return after {name} and extends/implements
-     * Carriage Return between extends/implements
-     * Carriage Return before '{'
-     */
-    $modifiers = '';
-    $space = '';
-    if ($ast['final']) {
-      $modifiers = 'final';
-      $space = ' ';
-    } else if ($ast['abstract']) {
-      $modifiers = 'abstract';
-      $space = ' ';
-    }
-
-    echo "{$modifiers}{$space}class {$ast['name']}";
-    $implements = isset($ast['implements']) ? $ast['implements'] : null;
-    if (isset($implements)) {
-      echo "\n";
-      $first = true;
-      foreach ($implements as $interace) {
-        if (!$first) {
-          // TODO Add Option to place linefeed before each interface
-          echo ', ';
+      foreach ($properties as $name => $property) {
+        if (isset($property['visibility'])) {
+          $this->_append($property['visibility']);
         }
-        $this->_emitVariable($interace, true);
+        $this->_append("\${$name}");
+        if (isset($property['default'])) {
+          $this->_append('=');
+          $this->_processExpression($property['default'], $class);
+        }
+        $this->_appendEOS();
+      }
+    }
+  }
+
+  protected function _emitClassMethods($class, $methods) {
+    // Do we have properties to output?
+    if (isset($methods) && is_array($methods)) { // YES
+      // TODO: Move to the Flag to Configuration File
+      $config_sortMethods = true; // Sort Class or Interface Methods?
+      if ($config_sortMethods) {
+        ksort($methods);
+      }
+
+      foreach ($methods as $name => $method) {
+        // Process Class Metho
+        $this->_emitClassMethod($class, $name, $method);
+      }
+    }
+  }
+
+  protected function _emitClassMethod($class, $name, $method) {
+    if (isset($method['docblock'])) {
+      echo "/{$method['docblock']}/\n";
+    }
+    /*
+     * METHOD HEADER
+     */
+    if (isset($method['visibility'])) {
+      $this->_append($method['visibility']);
+    }
+    $this->_append(['function', $name, '(']);
+    if (count($method['parameters'])) {
+      // TODO: Move to the Flag to Configuration File
+      $config_methodLFParameters = true; // Function Parameters on new line?
+      $this->_flush($config_methodLFParameters);
+      $this->_indent($config_methodLFParameters);
+
+      $first = true;
+      foreach ($method['parameters'] as $parameter) {
+        if (!$first) {
+          append(',');
+          $this->_flush($config_methodLFParameters);
+        }
+        $this->_processExpression($parameter, $class, $method);
         $first = false;
       }
-      /* TODO HAndle Case in Which we have implements (but not extends with respect to
-       * line feeds see oo/oonativeinterfaces
-       */
+      $this->_flush($config_methodLFParameters);
+      $this->_unindent($config_methodLFParameters);
     }
-    $extends = isset($ast['extends']) ? $ast['extends'] : null;
-    if (isset($extends)) {
-      echo "\n";
-      echo "{$extends} ";
-    }
-    echo "{\n";
+    $this->_append(')');
 
-    $section_order = ['constants', 'properties', 'methods'];
-    foreach ($section_order as $order) {
-      $section = isset($ast[$order]) ? $ast[$order] : null;
-      if (isset($section)) {
-        switch ($order) {
-          case 'constants':
-            $this->_emitClassConstants($section);
-            break;
-          case 'properties':
-            $this->_emitClassProperties($section);
-            break;
-          case 'methods':
-            $this->_emitClassMethods($section);
-            break;
-        }
-      }
-    }
-    echo "}\n";
-  }
+    // TODO: Move to the Flag to Configuration File
+    $config_methodLFStartBlock = true; // method '{' on new line?
+    $this->_flush($config_methodLFStartBlock);
+    $this->_append('{', true);
 
-  protected function _emitInterface($ast) {
+
     /*
-      class_declaration_statement:
-      class_modifiers T_CLASS { $<num>$ = CG(zend_lineno); }
-      T_STRING extends_from implements_list backup_doc_comment '{' class_statement_list '}'
-      { $$ = zend_ast_create_decl(ZEND_AST_CLASS, $1, $<num>3, $7, zend_ast_get_str($4), $5, $6, $9, NULL); }
-      |	T_CLASS { $<num>$ = CG(zend_lineno); }
-      T_STRING extends_from implements_list backup_doc_comment '{' class_statement_list '}'
-      { $$ = zend_ast_create_decl(ZEND_AST_CLASS, 0, $<num>2, $6, zend_ast_get_str($3), $4, $5, $8, NULL); }
-      ;
-     * 
-      class_modifiers:
-      class_modifier 					{ $$ = $1; }
-      |	class_modifiers class_modifier 	{ $$ = zend_add_class_modifier($1, $2); }
-      ;
-     * 
-      class_modifier:
-      T_ABSTRACT 		{ $$ = ZEND_ACC_EXPLICIT_ABSTRACT_CLASS; }
-      |	T_FINAL 		{ $$ = ZEND_ACC_FINAL; }
-      ;
+     * METHOD BODY
      */
+    $this->_indent();
 
+    if (isset($method['statements'])) {
+      $this->_processStatementBlock($method['statements'], $class, $method);
+    }
 
-    /* TODO:
-     * Carriage Return after {name} and extends
-     * Carriage Return before '{'
+    // Garauntee that we flush any pending lines
+    $this->_flush();
+    $this->_unindent();
+
+    /*
+     * METHOD FOOTER
      */
-    echo "interface {$ast['name']}";
-    $extends = isset($ast['extends']) ? $ast['extends'] : null;
-    if (isset($extends)) {
-      echo "\n";
-      echo "{$extends} ";
-    }
-    echo "{\n";
-
-    $sections = isset($ast['definition']) ? $ast['definition'] : null;
-    if (isset($sections)) {
-      $sectionsOrder = ['constants', 'properties', 'methods'];
-
-      foreach ($sectionsOrder as $order) {
-        if (isset($sections[$order])) {
-          $this->_redirectAST($order, $sections[$order], 'class');
-        }
-      }
-    }
-    echo "}\n";
+    $this->_append('}', true);
   }
 
-  protected function _processVisibility($visibility) {
-    return implode(' ', $visibility);
-  }
-
-  protected function _emitClassConstants($constants) {
-    // TODO: Add Emit Flag - sort constants (for now we use a fixed value)
-    $sort = true;
-    if ($sort) {
-      ksort($constants);
-    }
-
-    /* const CONSTANT = 'constant value'; */
-    foreach ($constants as $name => $ast) {
-      echo "const {$name}";
-      $this->_emitClassPropertyDefault($ast['default']);
-      echo ";\n";
-    }
-  }
-
-  protected function _emitClassProperties($properties) {
-    // TODO: Add Emit Flag - sort properties (for now we use a fixed value)
-    $sort = true;
-    if ($sort) {
-      ksort($properties);
-    }
-
-    foreach ($properties as $name => $ast) {
-      $visibility = $this->_processVisibility($ast['visibility']);
-      echo "{$visibility} \${$name}";
-      if (isset($ast['default'])) {
-        $this->_emitClassPropertyDefault($ast['default']);
-      }
-      echo ";\n";
-    }
-  }
-
-  protected function _emitClassPropertyDefault($astdefault) {
-    /* TODO
-     * Space Before and After '='
-     */
-    echo ' = ';
-    $type = $astdefault['type'];
-    $this->_redirectAST($type, $astdefault);
-  }
-
-  protected function _emitClassMethods($methods) {
-    // TODO: Add Emit Flag - sort methods (for now we use a fixed value)
-    $sort = true;
-    if ($sort) {
-      ksort($methods);
-    }
-
-    foreach ($methods as $name => $ast) {
-      $visibility = $this->_processVisibility($ast['visibility']);
-      if (isset($ast['docblock'])) {
-        echo "/{$ast['docblock']}/\n";
-      }
-      echo "{$visibility} function {$name}(";
-      if (isset($ast['parameters'])) {
-        $this->_emitParameters($ast['parameters']);
-      }
-      echo ") {\n";
-      if (isset($ast['statements'])) {
-        $this->_emitStatements($ast['statements']);
-      }
-      echo "}\n";
-    }
-  }
-
-  protected function _emitParameters($astparams) {
-    $first = true;
-    foreach ($astparams as $astparam) {
-      if (!$first) {
-        echo ', ';
-      }
-      $this->_redirectAST($astparam['type'], $astparam);
-      $first = false;
-    }
-  }
-
-  protected function _emitParameter($astparam) {
-    echo "\${$astparam['name']}";
-  }
-
-  protected function _emitStatements($aststats) {
-    foreach ($aststats as $aststat) {
-      $this->_redirectAST($aststat['type'], $aststat, 'statement');
-    }
-  }
-
-  protected function _emitStatementMcall($ast) {
+  protected function _statementMcall($call, $class, $method) {
     /* STATEMENT Method Calls Have a Nested AST Structure, which diferentiate
      * it from EXPRESSION Method Calls (i.e. all statements, have expressions
      * and an expression can be used as part of statements)
@@ -330,12 +467,12 @@ class EmitCode implements IStage {
       'expr' => [
       'type' => 'mcall'
      */
-    $mcall = $ast['expr']; // Extract Internal AST Element
-    $this->_emitMcall($mcall);
-    echo ";\n";
+
+    $this->_expressionMcall($call['expr'], $class, $method);
+    $this->_appendEOS();
   }
 
-  protected function _emitStatementFcall($ast) {
+  protected function _statementFcall($call, $class, $method) {
     /* STATEMENT Method Calls Have a Nested AST Structure, which diferentiate
      * it from EXPRESSION Method Calls (i.e. all statements, have expressions
      * and an expression can be used as part of statements)
@@ -343,24 +480,24 @@ class EmitCode implements IStage {
       'expr' => [
       'type' => 'mcall'
      */
-    $fcall = $ast['expr']; // Extract Internal AST Element
-    $this->_emitFcall($fcall);
-    echo ";\n";
+
+    $this->_expressionFcall($call['expr'], $class, $method);
+    $this->_appendEOS();
   }
 
-  protected function _emitStatementDeclare($ast) {
-    /* PHP Doesn't Require Declaration so do nothing for pure Declares,
-     * if the declaration assigns a default value treat it as if was a 'let' statement
+  protected function _statementAssign($assign, $class, $method) {
+    /* STATEMENT Method Calls Have a Nested AST Structure, which diferentiate
+     * it from EXPRESSION Method Calls (i.e. all statements, have expressions
+     * and an expression can be used as part of statements)
+      [ 'type' => 'mcall',
+      'expr' => [
+      'type' => 'mcall'
      */
-    $assignments = $ast['variables'];
-    foreach ($assignments as $assignment) {
-      if (isset($assignment['expr'])) {
-        echo "\${$assignment['variable']} = ";
-        $expr = $assignment['expr'];
-        $this->_emitExpression($expr);
-        echo ";\n";
-      }
-    }
+
+    $this->_append("\${$assign['variable']}");
+    $this->_append('=');
+    $this->_processExpression($assign['expr'], $class);
+    $this->_appendEOS();
   }
 
   protected function _emitStatementLet($ast) {
@@ -670,35 +807,38 @@ class EmitCode implements IStage {
     }
   }
 
-  protected function _emitStatementContinue($ast) {
-    echo "continue;\n";
+  protected function _statementClosure($closure, $class = null, $method = null) {
+    $this->_append('continue');
+    $this->_appendEOS();
   }
 
-  protected function _emitStatementBreak($ast) {
-    echo "break;\n";
+  protected function _statementContinue($continue, $class = null, $method = null) {
+    $this->_append('continue');
+    $this->_appendEOS();
   }
 
-  protected function _emitStatementReturn($ast) {
-    echo "return ";
-    if (isset($ast['expr'])) {
-      $this->_emitExpression($ast['expr']);
-    }
-    echo ";\n";
+  protected function _statementBreak($break, $class = null, $method = null) {
+    $this->_append('break');
+    $this->_appendEOS();
   }
 
-  protected function _emitStatementThrow($ast) {
-    echo "throw ";
-    if (isset($ast['expr'])) {
-      $this->_emitExpression($ast['expr']);
-    }
-    echo ";\n";
+  protected function _statementReturn($return, $class = null, $method = null) {
+    $this->_append('return');
+    $this->_processExpression($return['expr'], $class, $method);
+    $this->_appendEOS();
   }
 
-  protected function _emitStatementUnset($ast) {
-    $expr = $ast['expr'];
-    echo 'unset(';
-    $this->_emitExpression($expr);
-    echo ");\n";
+  protected function _statementThrow($throw, $class = null, $method = null) {
+    $this->_append('throw');
+    $this->_processExpression($throw['expr'], $class, $method);
+    $this->_appendEOS();
+  }
+
+  protected function _statementUnset($unset, $class = null, $method = null) {
+    $this->_append(['unset', '(']);
+    $this->_processExpression($unset['expr'], $class, $method);
+    $this->_append(')');
+    $this->_appendEOS();
   }
 
   protected function _emitStatementEcho($ast) {
@@ -1005,132 +1145,6 @@ class EmitCode implements IStage {
     echo ']';
   }
 
-  protected function _emitAdd($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' + ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitSub($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' - ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitMul($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' * ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitDiv($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' / ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitMod($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' % ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitConcat($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' . ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitAnd($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' && ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitOr($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' || ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitBitwiseOr($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' | ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitBitwiseAnd($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' & ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitBitwiseXor($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' ^ ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitBitwiseShiftleft($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' << ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitBitwiseShiftright($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' >> ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitInstanceof($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' instanceof ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
   protected function _emitIRange($ast) {
     $left = $ast['left'];
     $right = $ast['right'];
@@ -1165,36 +1179,66 @@ class EmitCode implements IStage {
    * 
    * @param type $ast
    */
-  protected function _emitMcall($ast) {
-    /* TODO If a variable is of type (array or string) we have to verify
-     * if it's using a fake object calls, this requires that we capture and 
-     * maintain parse data (i.e. if parameters are of type string/array).
-     * If they are declared 
-     */
-    $object = $ast['variable'];
-    $objtype = $object['type'];
-    switch ($objtype) {
-      case 'string':
-        $this->_emitMcallString($ast);
-        break;
-      case 'array':
-        $this->_emitMcallArray($ast);
-        break;
-      default:
-        $this->_emitVariable($object);
-        echo "->{$ast['name']}(";
-        if (isset($ast['parameters'])) {
-          $first = true;
-          foreach ($ast['parameters'] as $parameter) {
-            if (!$first) {
-              echo ', ';
-            }
-            $parameter = $parameter['parameter'];
-            $this->_redirectAST($parameter['type'], $parameter);
-            $first = false;
-          }
+  protected function _expressionMcall($call, $class = null, $method = null) {
+    $this->_processExpression($call['variable']);
+    $this->_append("->{$call['name']}(");
+    if (count($call['parameters'])) {
+      $first = true;
+      foreach ($call['parameters'] as $parameter) {
+        if (!$first) {
+          $this->_append(',');
         }
-        echo ")";
+        $this->_processExpression($parameter, $class, $method);
+        $first = false;
+      }
+    }
+    $this->_append(')');
+  }
+
+  /**
+   * Class Method Call
+   * 
+   * @param type $ast
+   */
+  protected function _expressionFcall($call, $class = null, $method = null) {
+    $this->_append("{$call['name']}(");
+    if (count($call['parameters'])) {
+      $first = true;
+      foreach ($call['parameters'] as $parameter) {
+        if (!$first) {
+          $this->_append(',');
+        }
+        $this->_processExpression($parameter, $class, $method);
+        $first = false;
+      }
+    }
+    $this->_append(')');
+  }
+
+  protected function _expressionParameter($parameter, $class, $method) {
+    $this->_append("\${$parameter['name']}");
+    if (isset($parameter['default'])) {
+      $this->_append('=');
+      $this->_processExpression($parameter['default'], $class);
+    }
+  }
+
+  protected function _expressionPropertyAccess($expression, $class, $method) {
+    $left = $expression['left'];
+    $right = $expression['right'];
+    $this->_processExpression($left, $class, $method);
+    $this->_append('->');
+    // Flag the Next Expression as Right Expression
+    $this->_right = true;
+    $this->_processExpression($right, $class, $method);
+    $this->_right = false;
+  }
+
+  protected function _expressionVariable($variable, $class, $method) {
+    if ($this->_right) {
+      $this->_append($variable['value']);
+    } else {
+      $this->_append("\${$variable['value']}");
     }
   }
 
@@ -1473,60 +1517,198 @@ class EmitCode implements IStage {
     }
   }
 
-  protected function _emitDouble($ast) {
-    echo $ast['value'];
+  protected function _expressionClosure($closure, $class, $method) {
+    /*
+     * METHOD HEADER
+     */
+    $this->_append(['function', '(']);
+    if (count($closure['parameters'])) {
+      // TODO: Move to the Flag to Configuration File
+      $config_methodLFParameters = true; // Function Parameters on new line?
+      $this->_flush($config_methodLFParameters);
+      $this->_indent($config_methodLFParameters);
+
+      $first = true;
+      foreach ($closure['parameters'] as $parameter) {
+        if (!$first) {
+          append(',');
+          $this->_flush($config_methodLFParameters);
+        }
+        $this->_processExpression($parameter, $class, $method);
+        $first = false;
+      }
+      $this->_flush($config_methodLFParameters);
+      $this->_unindent($config_methodLFParameters);
+    }
+    $this->_append(')');
+
+    // TODO: Move to the Flag to Configuration File
+    $config_methodLFStartBlock = true; // method '{' on new line?
+    $this->_flush($config_methodLFStartBlock);
+    $this->_append('{', true);
+
+    /*
+     * METHOD BODY
+     */
+    $this->_indent();
+
+    if (isset($closure['statements'])) {
+      $this->_processStatementBlock($closure['statements'], $class, $method);
+    }
+
+    // Garauntee that we flush any pending lines
+    $this->_flush();
+    $this->_unindent();
+
+    /*
+     * METHOD FOOTER
+     */
+    $this->_append('}', true);
   }
 
-  protected function _emitInt($ast) {
-    echo $ast['value'];
+  /*
+   * EXPRESSION OPERATORS
+   */
+
+  protected function _emitOperator($left, $operator, $right, $class, $method) {
+    $this->_processExpression($left, $class, $method);
+    $this->_append($operator);
+    $this->_processExpression($right, $class, $method);
   }
 
-  protected function _emitBool($ast) {
-    echo $ast['value'];
+  protected function _expressionList($list, $class, $method) {
+    $this->_append('(');
+    $this->_processExpression($list['left'], $class, $method);
+    $this->_append(')');
   }
 
-  protected function _emitNull($ast) {
-    echo 'null';
+  protected function _expressionAdd($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '+', $operation['right'], $class, $method);
   }
 
-  protected function _emitString($ast) {
-    echo "\"{$ast['value']}\"";
+  protected function _expressionSub($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '-', $operation['right'], $class, $method);
   }
 
-  protected function _emitChar($ast) {
-    echo "'{$ast['value']}'";
+  protected function _expressionMul($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '*', $operation['right'], $class, $method);
   }
 
-  protected function _emitArray($ast) {
-    $elements = $ast['left'];
+  protected function _expressionDiv($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '/', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionMod($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '%', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionConcat($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '.', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionAnd($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '&&', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionOr($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '||', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionBitwiseOr($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '|', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionBitwiseAnd($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '&', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionBitwiseXor($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '^', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionBitwiseShiftleft($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '<<', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionBitwiseShiftright($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '>>', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionInstanceof($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], 'instanceof', $operation['right'], $class, $method);
+  }
+
+  /*
+   * EXPRESSIONS BASIC TYPES
+   */
+
+  protected function _expressionDouble($ast, $class = null, $method = null) {
+    $this->_append($ast['value']);
+  }
+
+  protected function _expressionInt($ast, $class = null, $method = null) {
+    $this->_append($ast['value']);
+  }
+
+  protected function _expressionBool($ast, $class = null, $method = null) {
+    $this->_append(strtoupper($ast['value']));
+  }
+
+  protected function _expressionNull($ast, $class = null, $method = null) {
+    $this->_append('NULL');
+  }
+
+  protected function _expressionString($ast, $class = null, $method = null) {
+    $this->_append("\"{$ast['value']}\"");
+  }
+
+  protected function _expressionChar($ast, $class = null, $method = null) {
+    $this->_append("'{$ast['value']}'");
+  }
+
+  protected function _expressionArray($array, $class = null, $method = null) {
+    // OPEN ARRAY
+    $this->_append('[');
+
+    // PROCESS ARRAY ELEMENTS
     $first = true;
-    echo '[';
-    foreach ($elements as $element) {
+    foreach ($array['left'] as $entry) {
       if (!$first) {
-        echo ', ';
+        $this->_append(',');
       }
-      $key = isset($element['key']) ? $element['key'] : null;
+      $key = isset($entry['key']) ? $entry['key'] : null;
       if (isset($key)) {
-        $this->_redirectAST($key['type'], $key);
-        echo '=>';
+        $this->_processExpression($key, $class, $method);
+        $this->_append('=>');
       }
-      $value = $element['value'];
-      $this->_redirectAST($value['type'], $value);
+      $this->_processExpression($entry, $class, $method);
       $first = false;
     }
-    echo ']';
+
+    // CLOSE ARRAY
+    $this->_append(']');
   }
 
-  protected function _emitEmptyArray($ast) {
-    echo '[]';
-  }
-
-  protected function _emitVariable($ast, $property = false) {
-    echo $property ? $ast['value'] : "\${$ast['value']}";
+  protected function _expressionEmptyArray($ast) {
+    $this->_append('[]');
   }
 
   protected function _emitConstant($ast) {
     echo $ast['value'];
+  }
+
+  protected function _handlerName($prefix, $name) {
+    $name = implode(
+      array_map(function($e) {
+        return ucfirst(trim($e));
+      }, explode('-', $name))
+    );
+    $name = implode(
+      array_map(function($e) {
+        return ucfirst(trim($e));
+      }, explode('_', $name))
+    );
+    return $prefix . $name;
   }
 
 }
