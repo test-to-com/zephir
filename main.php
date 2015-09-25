@@ -123,7 +123,7 @@ $di->set("compiler-stages", function() {
   return [
     "\Zephir\PHP\Stages\Compact"
     ,"\Zephir\PHP\Stages\Process"
-//    ,"\Zephir\PHP\Stages\EmitCode"
+    ,"\Zephir\PHP\Stages\EmitCode"
   ];
 }, true);
 
@@ -133,8 +133,8 @@ $compiler->initialize();
 
 // Are we parsing a Single File?
 if (isset($input_file)) { // YES
-  var_dump($compiler->file($input_file));
-//  $compiler->file($input_file);
+//  var_dump($compiler->file($input_file));
+  $compiler->file($input_file);
 } else { // NO: Parsing Entire Directory
   $compiler->files($input_dir);
 }

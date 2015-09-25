@@ -148,7 +148,7 @@ class InlineNormalize implements IPhase {
 
       // Did we still have a current statement?
       if (isset($current)) { // YES: Add It
-        $statements[] = $statement;
+        $statements[] = $current;
       }
 
       // Do we need to insert statements after the current one?
@@ -235,6 +235,9 @@ class InlineNormalize implements IPhase {
 
   protected function _statementMcall(&$class, &$method, $statement) {
     list($before, $expression, $after) = $this->_processExpression($class, $method, $statement['expr']);
+    if ($expression['type'] === 'fcall') {
+      $statement['type'] = 'fcall';
+    }
     $statement['expr'] = $expression;
     return [$before, $statement, $after];
   }
@@ -271,7 +274,7 @@ class InlineNormalize implements IPhase {
       if (isset($prepend) && count($prepend)) {
         $before = array_merge($before, $prepend);
       }
-      $parameters[] = ['parameter' => $parameter];
+      $parameters[] = $parameter;
       if (isset($append) && count($append)) {
         $after = array_merge($after, $append);
       }
@@ -293,7 +296,7 @@ class InlineNormalize implements IPhase {
         if (isset($prepend) && count($prepend)) {
           $before = array_merge($before, $prepend);
         }
-        $parameters[] = ['parameter' => $parameter];
+        $parameters[] = $parameter;
         if (isset($append) && count($append)) {
           $after = array_merge($after, $append);
         }
@@ -310,7 +313,7 @@ class InlineNormalize implements IPhase {
         $sudoobject = 'array';
 
         // Need to make sure that we expand any array values, before using them
-        list($prepend, $parameter, $append) = $this->_processExpression($class, $method, $variable);
+        list($prepend, $variable, $append) = $this->_processExpression($class, $method, $variable);
         if (isset($prepend) && count($prepend)) {
           $before = array_merge($before, $prepend);
         }
@@ -365,7 +368,7 @@ class InlineNormalize implements IPhase {
     $closure = [
       'type' => 'closure',
       'call-type' => 1,
-      'parameters' => ['parameter' => $expression['left']],
+      'parameters' => [$expression['left']],
       'locals' => [],
       'file' => $expression['file'],
       'line' => $expression['line'],
@@ -409,7 +412,7 @@ class InlineNormalize implements IPhase {
       if (isset($prepend) && count($prepend)) {
         $before = array_merge($before, $prepend);
       }
-      $values[] = ['value' => $value];
+      $values[] = $value;
       if (isset($append) && count($append)) {
         $after = array_merge($after, $append);
       }
@@ -488,20 +491,19 @@ class InlineNormalize implements IPhase {
     $join_parameters = $expression['parameters'];
 
     switch (count($join_parameters)) {
+      case 1: // $glue set
+        $parameters = $join_parameters;
       case 0: // $glue not set (using default)
-        $parameters = ['parameter' => $variable];
+        $parameters[] = $variable;
         break;
       case 1:
-        $parameters = $join_parameters;
-        $parameters[] = ['parameter' => $variable];
-        break;
       default:
         throw new \Exception("Array join() requires 0 or 1 parameter");
     }
 
     $function = [
       'type' => 'fcall',
-      'name' => 'join',
+      'name' => 'implode',
       'call-type' => 1,
       'parameters' => $parameters,
       'file' => $expression['file'],
@@ -551,8 +553,8 @@ class InlineNormalize implements IPhase {
     /* TODO: Syntax Check
      * Verify that the 1st parameter is valid (i.e. is a closure or string)
      */
-    $parameters = $join_parameters[0];
-    $parameters[] = ['parameter' => $variable];
+    $parameters = [$join_parameters[0]];
+    $parameters[] = $variable;
 
     // Do we have more than 1 parameter to the join?
     if (count($join_parameters) > 1) { // YES: Append them after the $variable

@@ -156,29 +156,4 @@ class Process implements IStage {
 
     return $class;
   }
-
-  protected function _processMethod($class, $method) {
-    $statements = [];
-    if (count($method['statements'])) {
-      $statements = $this->_statementBlock($class, $method, $method['statements']);
-    }
-    $method['statements'] = $statements;
-    return $method;
-  }
-
-  /**
-   * Process a Block of Statements
-   * 
-   * @param type $class
-   * @param type $method
-   * @param type $block
-   */
-  protected function _statementBlock($class, $method, $block) {
-    $statements = [];
-    foreach ($block as $statement) {
-      $type = $statement['type'];
-      $local_handler = "_statement".ucfirst($type);
-    }
-  }
-
 }
