@@ -39,51 +39,77 @@ class InlineNormalize implements IPhase {
 
   protected $sudo_methods = [
     'array' => [
-      'join',
-      'reversed',
-      'rev',
-      'diff',
-      'flip',
-      'fill',
-      'walk',
-      'haskey',
-      'keys',
-      'values',
-      'split',
-      'combine',
-      'intersect',
-      'merge',
-      'mergerecursive',
-      'pad',
-      'pop',
-      'push',
-      'rand',
-      'replace',
-      'map',
-      'replacerecursive',
-      'shift',
-      'slice',
-      'splice',
-      'sum',
-      'unique',
-      'prepend',
-      'count',
-      'current',
-      'each',
-      'end',
-      'key',
-      'next',
-      'prev',
-      'reset',
-      'sort',
-      'sortbykey',
-      'reversesort',
-      'reversesortbykey',
-      'shuffle',
-      'tojson',
-      'reduce'
+      'join', // 'implode'
+      'reversed', // 'array_reverse'
+      'rev', //  'array_reverse'
+      'diff', // 'array_diff'
+      'flip', // 'array_flip'
+      'fill', // 'array_fill'
+      'walk', // 'array_walk'
+      'haskey', // 'array_key_exists'
+      'keys', // 'array_keys'
+      'values', // 'array_values'
+      'split', // 'array_chunk'
+      'combine', // 'array_combine'
+      'intersect', // 'array_intersect'
+      'merge', // 'array_merge'
+      'mergerecursive', // 'array_merge_recursive'
+      'pad', // 'array_pad'
+      'pop', // 'array_pop'
+      'push', // 'array_push'
+      'rand', // 'array_rand'
+      'replace', // 'array_replace'
+      'map', // 'array_map'
+      'replacerecursive', // 'array_replace_recursive'
+      'shift', // 'array_shift'
+      'slice', // 'array_slice'
+      'splice', // 'array_splice'
+      'sum', // 'array_sum'
+      'unique', // 'array_unique'
+      'prepend', // 'array_unshift'
+      'count', // 'count'
+      'current', // 'current'
+      'each', // 'each'
+      'end', // 'end'
+      'key', // 'key'
+      'next', // 'next'
+      'prev', // 'prev'
+      'reset', // 'reset'
+      'sort', // 'sort'
+      'sortbykey', // 'ksort'
+      'reversesort', // 'rsort'
+      'reversesortbykey', // 'krsort'
+      'shuffle', // 'shuffle'
+      'tojson', // 'json_encode'
+      'reduce' // array_reduce
     ],
     'string' => [
+      'index', // 'strpos'
+      'trim', // 'trim'
+      'trimleft', // 'ltrim'
+      'trimright', // 'rtrim'
+      'length', // 'strlen'
+      'lower', // 'strtolower'
+      'upper', // 'strtoupper'
+      'lowerfirst', // 'lcfirst'
+      'upperfirst', // 'ucfirst'
+      'format', // 'sprintf'
+      'md5', // 'md5'
+      'sha1', // 'sha1'
+      'nl2br', // 'nl2br'
+      'parsecsv', // 'str_getcsv'
+      'parsejson', // 'json_decode'
+      'tojson', // 'json_encode'
+      'toutf8', // 'utf8_encode'
+      'repeat', // 'str_repeat'
+      'shuffle', // 'str_shuffle'
+      'split', // 'str_split'
+      'compare', // 'strcmp'
+      'comparelocale', // 'strcoll'
+      'rev', // 'strrev'
+      'htmlspecialchars', // 'htmlspecialchars'
+      'camelize', // 'camelize'
+      'uncamelize' // 'uncamelize'
     ]
   ];
 
@@ -163,12 +189,18 @@ class InlineNormalize implements IPhase {
   protected function _processStatement(&$class, &$method, $statement) {
     $type = $statement['type'];
 
+    // Do we have Specific Handler?
     $handler = $this->_handlerName("_statement", ucfirst($type));
-    if (method_exists($this, $handler)) {
+    if (method_exists($this, $handler)) { // YES: Use it!
       return $this->$handler($class, $method, $statement);
-    } else if (method_exists($this, "_statementDEFAULT")) {
+    } else { // NO: Try Default
+      $handler = '_statementDEFAULT';
+    }
+
+    // Do we have a Default Handler?
+    if (method_exists($this, $handler)) { // YES: Use it!
       return $this->$handler($class, $method, $statement);
-    } else {
+    } else { // NO: Aborts
       throw new \Exception("Unhandled statement type [{$type}] in line [{$statement['line']}]");
     }
   }
@@ -249,16 +281,20 @@ class InlineNormalize implements IPhase {
   }
 
   protected function _processExpression(&$class, &$method, $expression) {
-    $before = [];
-    $after = [];
-
     $type = $expression['type'];
+
+    // Do we have Specific Handler?
     $handler = $this->_handlerName("_expression", ucfirst($type));
-    if (method_exists($this, $handler)) {
+    if (method_exists($this, $handler)) { // YES: Use it!
       return $this->$handler($class, $method, $expression);
-    } else if (method_exists($this, "_expressionDEFAULT")) {
+    } else { // NO: Try Default
+      $handler = '_expressionDEFAULT';
+    }
+
+    // Do we have a Default Handler?
+    if (method_exists($this, $handler)) { // YES: Use it!
       return $this->$handler($class, $method, $expression);
-    } else {
+    } else { // NO: Aborts
       throw new \Exception("Unhandled expression type [{$type}] in line [{$expression['line']}]");
     }
   }
@@ -422,6 +458,23 @@ class InlineNormalize implements IPhase {
     return [$before, $expression, $after];
   }
 
+  protected function _expressionList(&$class, &$method, $list) {
+    $before = [];
+    $after = [];
+
+    // Process Left Expression
+    list($prepend, $left, $append) = $this->_processExpression($class, $method, $list['left']);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    $list['left'] = $left;
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
+
+    return [$before, $list, $after];
+  }
+
   protected function _expressionConcat(&$class, &$method, $expression) {
     $before = [];
     $after = [];
@@ -449,40 +502,7 @@ class InlineNormalize implements IPhase {
     return [$before, $expression, $after];
   }
 
-  protected function _expressionList(&$class, &$method, $list) {
-    $before = [];
-    $after = [];
-
-    // Process Left Expression
-    list($prepend, $left, $append) = $this->_processExpression($class, $method, $list['left']);
-    if (isset($prepend) && count($prepend)) {
-      $before = array_merge($before, $prepend);
-    }
-    $list['left'] = $left;
-    if (isset($append) && count($append)) {
-      $after = array_merge($after, $append);
-    }
-
-    return [$before, $list, $after];
-  }
-
-  protected function _expressionMul(&$class, &$method, $expression) {
-    return [null, $expression, null];
-  }
-
-  protected function _expressionVariable(&$class, &$method, $expression) {
-    return [null, $expression, null];
-  }
-
-  protected function _expressionString(&$class, &$method, $expression) {
-    return [null, $expression, null];
-  }
-
-  protected function _expressionChar(&$class, &$method, $expression) {
-    return [null, $expression, null];
-  }
-
-  protected function _expressionInt(&$class, &$method, $expression) {
+  protected function _expressionDEFAULT(&$class, &$method, $expression) {
     return [null, $expression, null];
   }
 

@@ -149,24 +149,38 @@ class EmitCode implements IStage {
 
   protected function _processStatement($statement, $class = null, $method = null) {
     $type = $statement['type'];
+
+    // Do we have Specific Handler?
     $handler = $this->_handlerName("_statement", ucfirst($type));
-    if (method_exists($this, $handler)) {
+    if (method_exists($this, $handler)) { // YES: Use it!
       return $this->$handler($statement, $class, $method);
-    } else if (method_exists($this, "_statementDEFAULT")) {
+    } else { // NO: Try Default
+      $handler = '_statementDEFAULT';
+    }
+
+    // Do we have a Default Handler?
+    if (method_exists($this, $handler)) { // YES: Use it!
       return $this->$handler($statement, $class, $method);
-    } else {
+    } else { // NO: Aborts
       throw new \Exception("Unhandled statement type [{$type}] in line [{$statement['line']}]");
     }
   }
 
   protected function _processExpression($expression, $class = null, $method = null) {
     $type = $expression['type'];
+
+    // Do we have Specific Handler?
     $handler = $this->_handlerName("_expression", ucfirst($type));
-    if (method_exists($this, $handler)) {
+    if (method_exists($this, $handler)) { // YES: Use it!
       return $this->$handler($expression, $class, $method);
-    } else if (method_exists($this, "_expressionDEFAULT")) {
+    } else { // NO: Try Default
+      $handler = '_expressionDEFAULT';
+    }
+
+    // Do we have a Default Handler?
+    if (method_exists($this, $handler)) { // YES: Use it!
       return $this->$handler($expression, $class, $method);
-    } else {
+    } else { // NO: Aborts
       throw new \Exception("Unhandled expression type [{$type}] in line [{$expression['line']}]");
     }
   }
@@ -423,7 +437,7 @@ class EmitCode implements IStage {
       $first = true;
       foreach ($method['parameters'] as $parameter) {
         if (!$first) {
-          append(',');
+          $this->_append(',');
           $this->_flush($config_methodLFParameters);
         }
         $this->_processExpression($parameter, $class, $method);
@@ -1181,7 +1195,7 @@ class EmitCode implements IStage {
    */
   protected function _expressionMcall($call, $class = null, $method = null) {
     $this->_processExpression($call['variable']);
-    $this->_append("->{$call['name']}(");
+    $this->_append(['->', $call['name'], '(']);
     if (count($call['parameters'])) {
       $first = true;
       foreach ($call['parameters'] as $parameter) {
@@ -1201,7 +1215,7 @@ class EmitCode implements IStage {
    * @param type $ast
    */
   protected function _expressionFcall($call, $class = null, $method = null) {
-    $this->_append("{$call['name']}(");
+    $this->_append([$call['name'], '(']);
     if (count($call['parameters'])) {
       $first = true;
       foreach ($call['parameters'] as $parameter) {
@@ -1484,20 +1498,30 @@ class EmitCode implements IStage {
     echo ")";
   }
 
-  protected function _emitNew($ast) {
-    echo "new {$ast['class']}(";
-    if (isset($ast['parameters'])) {
+  protected function _expressionNew($new, $class, $method) {
+    $this->_append(['new', $new['class']]);
+    if (isset($new['parameters'])) {
+      $this->_append('(');
+
+      // TODO: Move to the Flag to Configuration File
+      $config_callLFParameters = true; // Function Parameters on new line?
+      $this->_flush($config_callLFParameters);
+      $this->_indent($config_callLFParameters);
+
       $first = true;
-      foreach ($ast['parameters'] as $parameter) {
+      foreach ($new['parameters'] as $parameter) {
         if (!$first) {
-          echo ', ';
+          $this->_append(',');
+          $this->_flush($config_callLFParameters);
         }
         $parameter = $parameter['parameter'];
-        $this->_redirectAST($parameter['type'], $parameter);
+        $this->_processExpression($parameter, $class, $method);
         $first = false;
       }
+      $this->_flush($config_callLFParameters);
+      $this->_unindent($config_callLFParameters);
+      $this->_append(')');
     }
-    echo ")";
   }
 
   protected function _emitNewType($ast) {
@@ -1531,7 +1555,7 @@ class EmitCode implements IStage {
       $first = true;
       foreach ($closure['parameters'] as $parameter) {
         if (!$first) {
-          append(',');
+          $this->_append(',');
           $this->_flush($config_methodLFParameters);
         }
         $this->_processExpression($parameter, $class, $method);

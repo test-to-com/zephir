@@ -122,8 +122,8 @@ $di->set("compiler", "\Zephir\PHP\Compiler", true);
 $di->set("compiler-stages", function() {
   return [
     "\Zephir\PHP\Stages\Compact"
-    ,"\Zephir\PHP\Stages\Process"
-    ,"\Zephir\PHP\Stages\EmitCode"
+    , "\Zephir\PHP\Stages\Process"
+    , "\Zephir\PHP\Stages\EmitCode"
   ];
 }, true);
 
