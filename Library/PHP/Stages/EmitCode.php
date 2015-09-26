@@ -40,7 +40,7 @@ class EmitCode implements IStage {
   protected $_indent_level = 0;
   // TODO: Maybe Create a Compile Context Object so as to simplify handlers
   // Processing a Right Expression (i.e. for variables this means dropping the '$');
-  protected $_right = false;
+  protected $_property = false;
 
   /**
    * Initialize the Stage Instance
@@ -419,7 +419,11 @@ class EmitCode implements IStage {
 
   protected function _emitClassMethod($class, $name, $method) {
     if (isset($method['docblock'])) {
-      echo "/{$method['docblock']}/\n";
+      $this->_flush();
+      $this->_append('/*', true);
+      $this->_append($method['docblock'], true);
+      ;
+      $this->_append('*/', true);
     }
     /*
      * METHOD HEADER
@@ -487,12 +491,12 @@ class EmitCode implements IStage {
   }
 
   protected function _statementFcall($call, $class, $method) {
-    /* STATEMENT Method Calls Have a Nested AST Structure, which diferentiate
+    /* STATEMENT Function Calls Have a Nested AST Structure, which diferentiate
      * it from EXPRESSION Method Calls (i.e. all statements, have expressions
      * and an expression can be used as part of statements)
-      [ 'type' => 'mcall',
+      [ 'type' => 'fcall',
       'expr' => [
-      'type' => 'mcall'
+      'type' => 'fcall'
      */
 
     $this->_expressionFcall($call['expr'], $class, $method);
@@ -500,17 +504,53 @@ class EmitCode implements IStage {
   }
 
   protected function _statementAssign($assign, $class, $method) {
-    /* STATEMENT Method Calls Have a Nested AST Structure, which diferentiate
-     * it from EXPRESSION Method Calls (i.e. all statements, have expressions
-     * and an expression can be used as part of statements)
-      [ 'type' => 'mcall',
-      'expr' => [
-      'type' => 'mcall'
-     */
+    // PROCESS TO Expression
+    switch ($assign['assign-to-type']) {
+      case 'variable':
+        $this->_append(["\${$assign['variable']}"]);
+        break;
+      case 'variable-append':
+        $this->_append(["\${$assign['variable']}", '[]']);
+        break;
+      case 'object-property':
+        $this->_append(["\${$assign['variable']}", '->', $assign['property']]);
+        break;
+      case 'object-property-append':
+        $this->_append(["\${$assign['variable']}", '->', $assign['property'], '[]']);
+        break;
+      case 'static-property':
+        $this->_append([$assign['variable'], '::', "\${$assign['property']}"]);
+        break;
+      case 'static-property-append':
+        $this->_append([$assign['variable'], '::', "\${$assign['property']}", '[]']);
+        break;
+      default:
+        throw new \Exception("Unhandled Assignment Type [{$assign['assign-type']}] in line [{$assign['line']}]");
+    }
 
-    $this->_append("\${$assign['variable']}");
-    $this->_append('=');
-    $this->_processExpression($assign['expr'], $class);
+    // PROCESS ASSIGNMENT OPERATOR
+    switch ($assign['operator']) {
+      case 'assign':
+        $this->_append('=');
+        break;
+      case "concat-assign":
+        $this->_append('.=');
+        break;
+      case 'mul-assign':
+        $this->_append('*=');
+        break;
+      case 'add-assign':
+        $this->_append('+=');
+        break;
+      case 'sub-assign':
+        $this->_append('.=');
+        break;
+      default:
+        throw new \Exception("Unhandled assignment operator  [{$assign['operator']}] in line [{$assign['line']}]");
+    }
+
+    // PROCESS R.H.S Expression
+    $this->_processExpression($assign['expr'], $class, $method);
     $this->_appendEOS();
   }
 
@@ -742,38 +782,55 @@ class EmitCode implements IStage {
     echo "}\n";
   }
 
-  protected function _emitStatementIf($ast) {
-    echo "if(";
-    $expr = $ast['expr'];
-    $fetch = $expr['type'] === 'fetch';
-    if ($fetch) {
-      $this->_emitFetchCheck($expr);
-    } else {
-      $this->_redirectAST($expr['type'], $expr);
-    }
-    echo ") {\n";
-    if ($fetch) {
-      $this->_emitFetchAssign($expr);
+  protected function _statementIf($if, $class = null, $method = null) {
+
+    /* IF (EXPR) */
+    $this->_append(['if', '(']);
+    // TODO: Move to the Flag to Configuration File
+    $config_ifLFExpressions = true; // Function Parameters on new line?
+    $this->_flush($config_ifLFExpressions);
+    $this->_indent($config_ifLFExpressions);
+
+    $this->_processExpression($if['expr'], $class, $method);
+
+    $this->_flush($config_ifLFExpressions);
+    $this->_unindent($config_ifLFExpressions);
+    $this->_append(')');
+
+    $config_ifLFStartBlock = true; // method '{' on new line?
+    $this->_flush($config_ifLFStartBlock);
+    $this->_append('{', true);
+
+    /* IF { statements } */
+    $this->_indent();
+
+    if (isset($if['statements'])) {
+      $this->_processStatementBlock($if['statements'], $class, $method);
     }
 
-    /* TODO 
-     * 1. Optimization, if an 'for' has no statements we should just use a ';' rather than a '{ }' pair
-     * 2. Optimization, if an 'for' has no statements, than maybe it is 'dead code' and should be removed
-     * NOTE: this requires that the test expression has no side-effects (i.e. assigning within an if, function call, etc.)
-     */
-    $statements = isset($ast['statements']) ? $ast['statements'] : null;
-    if (isset($statements)) {
-      $this->_emitStatements($statements);
+    // Garauntee that we flush any pending lines
+    $this->_flush();
+    $this->_unindent();
+    $this->_append('}', true);
+
+    /* ELSE IF { statements } */
+    if (isset($if['elseif_statements'])) {
+      throw new Exception("TODO Implement ELSE-IF");
     }
 
-    // Do we have an else clause?
-    $else = isset($ast['else_statements']) ? $ast['else_statements'] : null;
-    if (isset($else)) { // YES
-      echo "} else {\n";
-      $this->_emitStatements($else);
-    }
+    /* ELSE { statements } */
+    if (isset($if['else_statements'])) {
+      $this->_append(['else', '{'], true);
+      $this->_indent();
 
-    echo "}\n";
+      /* ELSE { statements } */
+      $this->_processStatementBlock($if['else_statements'], $class, $method);
+
+      // Garauntee that we flush any pending lines
+      $this->_flush();
+      $this->_unindent();
+      $this->_append('}', true);
+    }
   }
 
   protected function _emitStatementSwitch($ast) {
@@ -821,11 +878,6 @@ class EmitCode implements IStage {
     }
   }
 
-  protected function _statementClosure($closure, $class = null, $method = null) {
-    $this->_append('continue');
-    $this->_appendEOS();
-  }
-
   protected function _statementContinue($continue, $class = null, $method = null) {
     $this->_append('continue');
     $this->_appendEOS();
@@ -855,17 +907,17 @@ class EmitCode implements IStage {
     $this->_appendEOS();
   }
 
-  protected function _emitStatementEcho($ast) {
-    $expressions = $ast['expressions'];
-    echo 'echo ';
+  protected function _statementEcho($echo, $class = null, $method = null) {
+    $this->_append('echo');
     $first = true;
-    foreach ($expressions as $expr) {
+    foreach ($echo['expressions'] as $expression) {
       if (!$first) {
-        echo '.';
+        $this->_append('.');
       }
-      $this->_emitExpression($expr);
+      $this->_processExpression($expression, $class, $method);
+      $first = false;
     }
-    echo ";\n";
+    $this->_appendEOS();
   }
 
   protected function _emitStatementClone($ast) {
@@ -1003,86 +1055,6 @@ class EmitCode implements IStage {
     /* THIS IS ONLY AN OPTIMIZATION HINT : Don't know if it's of any use in PHP */
   }
 
-  protected function _emitEquals($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' == ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitNotEquals($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' != ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitIdentical($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' === ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitNotIdentical($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' !== ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitLess($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' < ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitGreater($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' > ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitLessEqual($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' <= ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitGreaterEqual($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo ' >= ';
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitList($ast) {
-    $left = $ast['left'];
-
-    echo '(';
-    $this->_redirectAST($left['type'], $left);
-    echo ')';
-  }
-
   protected function _emitCast($ast) {
     /* $left = $ast['left']; : Represents Hint, which we don't choose */
     $right = $ast['right'];
@@ -1130,35 +1102,6 @@ class EmitCode implements IStage {
     echo '\')';
   }
 
-  protected function _emitStaticPropertyAccess($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_emitVariable($left, true);
-    echo '::';
-    $this->_emitVariable($right);
-  }
-
-  protected function _emitStaticConstantAccess($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_emitVariable($left, true);
-    echo '::';
-    $this->_emitVariable($right);
-  }
-
-  protected function _emitArrayAccess($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_redirectAST($left['type'], $left);
-    echo '[';
-    // TODO: Handle Situations in which the right side is a string and not a variable (or int, etc).
-    $this->_emitVariable($right, true);
-    echo ']';
-  }
-
   protected function _emitIRange($ast) {
     $left = $ast['left'];
     $right = $ast['right'];
@@ -1181,11 +1124,24 @@ class EmitCode implements IStage {
     echo ')))';
   }
 
-  protected function _emitTypeof($ast) {
-    $left = $ast['left'];
-    echo 'gettype(';
-    $this->_redirectAST($left['type'], $left);
-    echo ')';
+  /**
+   * Class Method Call
+   * 
+   * @param type $ast
+   */
+  protected function _expressionScall($call, $class = null, $method = null) {
+    $this->_append([$call['class'], '::', $call['name'], '(']);
+    if (count($call['parameters'])) {
+      $first = true;
+      foreach ($call['parameters'] as $parameter) {
+        if (!$first) {
+          $this->_append(',');
+        }
+        $this->_processExpression($parameter, $class, $method);
+        $first = false;
+      }
+    }
+    $this->_append(')');
   }
 
   /**
@@ -1229,275 +1185,6 @@ class EmitCode implements IStage {
     $this->_append(')');
   }
 
-  protected function _expressionParameter($parameter, $class, $method) {
-    $this->_append("\${$parameter['name']}");
-    if (isset($parameter['default'])) {
-      $this->_append('=');
-      $this->_processExpression($parameter['default'], $class);
-    }
-  }
-
-  protected function _expressionPropertyAccess($expression, $class, $method) {
-    $left = $expression['left'];
-    $right = $expression['right'];
-    $this->_processExpression($left, $class, $method);
-    $this->_append('->');
-    // Flag the Next Expression as Right Expression
-    $this->_right = true;
-    $this->_processExpression($right, $class, $method);
-    $this->_right = false;
-  }
-
-  protected function _expressionVariable($variable, $class, $method) {
-    if ($this->_right) {
-      $this->_append($variable['value']);
-    } else {
-      $this->_append("\${$variable['value']}");
-    }
-  }
-
-  protected function _emitMcallString($ast) {
-    $map = [
-      'index' => 'strpos',
-      'trim' => 'trim',
-      'trimleft' => 'ltrim',
-      'trimright' => 'rtrim',
-      'length' => 'strlen',
-      'lower' => 'strtolower',
-      'upper' => 'strtoupper',
-      'lowerfirst' => 'lcfirst',
-      'upperfirst' => 'ucfirst',
-      'format' => 'sprintf',
-      'md5' => 'md5',
-      'sha1' => 'sha1',
-      'nl2br' => 'nl2br',
-      'parsecsv' => 'str_getcsv',
-      'parsejson' => 'json_decode',
-      'tojson' => 'json_encode',
-      'toutf8' => 'utf8_encode',
-      'repeat' => 'str_repeat',
-      'shuffle' => 'str_shuffle',
-      'split' => 'str_split',
-      'compare' => 'strcmp',
-      'comparelocale' => 'strcoll',
-      'rev' => 'strrev',
-      'htmlspecialchars' => 'htmlspecialchars',
-      'camelize' => 'camelize',
-      'uncamelize' => 'uncamelize',
-    ];
-    $method = $ast['name'];
-    if (!array_key_exists($method, $map)) {
-      throw new \Exception("Function [_emitMcallString] - Method [{$method}] doesn't exist for String Object");
-    }
-
-    throw new \Exception("Function [_emitMcallString] - TODO Implement");
-  }
-
-  protected function _emitMcallArray($ast) {
-    $map = [
-      'join' => [
-        'function' => 'join',
-        'parameters' => '1*,O',
-        'inplace' => false
-      ],
-      'reversed' => [
-        'function' => 'array_reverse',
-        'parameters' => 'O,*'
-      ],
-      'rev' => [
-        'function' => 'array_reverse',
-        'parameters' => 'O,*'
-      ],
-      'diff' => [
-        'function' => 'array_diff',
-        'parameters' => 'O,*'
-      ],
-      'flip' => [
-        'function' => 'array_flip',
-        'parameters' => 'O'
-      ],
-      'fill' => [
-        'function' => 'array_fill',
-        'parameters' => 'O,*'
-      ],
-      'walk' => [
-        'function' => 'array_walk',
-        'parameters' => 'O,*'
-      ],
-      'haskey' => [
-        'function' => 'array_key_exists',
-        'parameters' => 'O,*'
-      ],
-      'keys' => [
-        'function' => 'array_keys',
-        'parameters' => 'O,*'
-      ],
-      'values' => [
-        'function' => 'array_values',
-        'parameters' => 'O'
-      ],
-      'split' => [
-        'function' => 'array_chunk',
-        'parameters' => 'O,*'
-      ],
-      'combine' => [
-        'function' => 'array_combine',
-        'parameters' => '*'
-      ],
-      'intersect' => [
-        'function' => 'array_intersect',
-        'parameters' => 'O,*'
-      ],
-      'merge' => [
-        'function' => 'array_merge',
-        'parameters' => 'O,*'
-      ],
-      'mergerecursive' => [
-        'function' => 'array_merge_recursive',
-        'parameters' => 'O,*'
-      ],
-      'pad' => [
-        'function' => 'array_pad',
-        'parameters' => 'O,*'
-      ],
-      'pop' => [
-        'function' => 'array_pop',
-        'parameters' => 'O'
-      ],
-      'push' => [
-        'function' => 'array_push',
-        'parameters' => 'O,*'
-      ],
-      'rand' => [
-        'function' => 'array_rand',
-        'parameters' => 'O,*'
-      ],
-      'replace' => [
-        'function' => 'array_replace',
-        'parameters' => 'O,*'
-      ],
-      'map' => [
-        'function' => 'array_map',
-        'parameters' => '1,O',
-      ],
-      'replacerecursive' => [
-        'function' => 'array_replace_recursive',
-        'parameters' => 'O,*'
-      ],
-      'shift' => [
-        'function' => 'array_shift',
-        'parameters' => 'O'
-      ],
-      'slice' => [
-        'function' => 'array_slice',
-        'parameters' => 'O,*'
-      ],
-      'splice' => [
-        'function' => 'array_splice',
-        'parameters' => 'O,*'
-      ],
-      'sum' => [
-        'function' => 'array_sum',
-        'parameters' => 'O'
-      ],
-      'unique' => [
-        'function' => 'array_unique',
-        'parameters' => 'O,*'
-      ],
-      'prepend' => [
-        'function' => 'array_unshift',
-        'parameters' => 'O,*'
-      ],
-      'count' => [
-        'function' => 'count',
-        'parameters' => 'O,*'
-      ],
-      'current' => [
-        'function' => 'current',
-        'parameters' => 'O'
-      ],
-      'each' => [
-        'function' => 'each',
-        'parameters' => 'O'
-      ],
-      'end' => [
-        'function' => 'end',
-        'parameters' => 'O'
-      ],
-      'key' => [
-        'function' => 'key',
-        'parameters' => 'O'
-      ],
-      'next' => [
-        'function' => 'next',
-        'parameters' => 'O'
-      ],
-      'prev' => [
-        'function' => 'prev',
-        'parameters' => 'O'
-      ],
-      'reset' => [
-        'function' => 'reset',
-        'parameters' => 'O'
-      ],
-      'sort' => [
-        'function' => 'sort',
-        'parameters' => 'O,*'
-      ],
-      'sortbykey' => [
-        'function' => 'ksort',
-        'parameters' => 'O,*'
-      ],
-      'reversesort' => [
-        'function' => 'rsort',
-        'parameters' => 'O,*'
-      ],
-      'reversesortbykey' => [
-        'function' => 'krsort',
-        'parameters' => 'O,*'
-      ],
-      'shuffle' => [
-        'function' => 'shuffle',
-        'parameters' => 'O'
-      ],
-      'tojson' => [
-        'function' => 'json_encode',
-        'parameters' => 'O,*'
-      ],
-      'reduce' => [
-        'function' => 'array_reduce',
-        'parameters' => 'O,*',
-      ],
-    ];
-    $method = $ast['name'];
-    if (!array_key_exists($method, $map)) {
-      throw new \Exception("Function [_emitMcallArray] - Method [{$method}] doesn't exist for Array Object");
-    }
-
-    $map_entry = $map[$method];
-    $method = $map_entry['function'];
-    $param_map = explode(',', $map_entry['parameters']);
-    $parameters = isset($ast['parameters']) ? $ast['parameters'] : null;
-
-    throw new \Exception("Function [_emitMcallArray] - TODO Implement");
-  }
-
-  protected function _emitFcall($ast) {
-    echo "{$ast['name']}(";
-    if (isset($ast['parameters'])) {
-      $first = true;
-      foreach ($ast['parameters'] as $parameter) {
-        if (!$first) {
-          echo ', ';
-        }
-        $parameter = $parameter['parameter'];
-        $this->_redirectAST($parameter['type'], $parameter);
-        $first = false;
-      }
-    }
-    echo ")";
-  }
-
   protected function _expressionNew($new, $class, $method) {
     $this->_append(['new', $new['class']]);
     if (isset($new['parameters'])) {
@@ -1514,13 +1201,112 @@ class EmitCode implements IStage {
           $this->_append(',');
           $this->_flush($config_callLFParameters);
         }
-        $parameter = $parameter['parameter'];
         $this->_processExpression($parameter, $class, $method);
         $first = false;
       }
       $this->_flush($config_callLFParameters);
       $this->_unindent($config_callLFParameters);
       $this->_append(')');
+    }
+  }
+
+  protected function _expressionIsset($isset, $class, $method) {
+    $left = $isset['left'];
+    switch ($left['type']) {
+      case 'array-access':
+        $this->_append(['zephir_isset_array', '(']);
+        $this->_processExpression($left['left'], $class, $method);
+        $this->_append(',');
+        $this->_processExpression($left['right'], $class, $method);
+        $this->_append(')');
+        break;
+      case 'property-access':
+      case 'property-string-access':
+        $this->_append(['zephir_isset_property', '(']);
+        $this->_processExpression($left['left'], $class, $method);
+        $this->_append(',');
+        $right = $left['right'];
+        switch ($right['type']) {
+          case 'variable':
+          case 'string':
+            $this->_append("'{$right['value']}'");
+            break;
+          default:
+            throw new \Exception("TODO - 1 - isset([{$right['type']}])");
+        }
+        $this->_append(')');
+        break;
+      case 'property-dynamic-access':
+        $this->_append(['zephir_isset_property', '(']);
+        $this->_processExpression($left['left'], $class, $method);
+        $this->_append(',');
+        $this->_processExpression($left['right'], $class, $method);
+        $this->_append(')');
+        break;
+      default:
+        throw new \Exception("TODO - 2 - isset([{$type}])");
+    }
+  }
+
+  protected function _expressionTypeof($typeof, $class, $method) {
+    $this->_append(['gettype', '(']);
+    $this->_processExpression($typeof['left'], $class, $method);
+    $this->_append(')');
+  }
+
+  protected function _expressionParameter($parameter, $class, $method) {
+    $this->_append("\${$parameter['name']}");
+    if (isset($parameter['default'])) {
+      $this->_append('=');
+      $this->_processExpression($parameter['default'], $class);
+    }
+  }
+
+  protected function _expressionArrayAccess($expression, $class = null, $method = null) {
+    $left = $expression['left'];
+    $right = $expression['right'];
+    $this->_processExpression($left, $class, $method);
+    $this->_append('[');
+    $this->_processExpression($right, $class, $method);
+    $this->_append(']');
+  }
+
+  protected function _expressionPropertyAccess($expression, $class = null, $method = null) {
+    $left = $expression['left'];
+    $right = $expression['right'];
+    $this->_processExpression($left, $class, $method);
+    $this->_append('->');
+    // Flag the Next Expression as Property Expression
+    $this->_property = true;
+    $this->_processExpression($right, $class, $method);
+    $this->_property = false;
+  }
+
+  protected function _expressionStaticPropertyAccess($expression, $class = null, $method = null) {
+    $left = $expression['left'];
+    $right = $expression['right'];
+    $this->_property = true;
+    $this->_processExpression($left, $class, $method);
+    $this->_property = false;
+    $this->_append('::');
+    $this->_processExpression($right, $class, $method);
+  }
+
+  protected function _expressionStaticConstantAccess($expression, $class = null, $method = null) {
+    $left = $expression['left'];
+    $right = $expression['right'];
+    $this->_property = true;
+    $this->_processExpression($left, $class, $method);
+    $this->_append('::');
+    $this->_processExpression($right, $class, $method);
+    $this->_property = false;
+  }
+
+  protected function _expressionVariable($variable, $class, $method) {
+    if ($this->_property) {
+      $this->_append($variable['value']);
+    } else {
+      $this->_append("\${$variable['value']}");
     }
   }
 
@@ -1626,18 +1412,6 @@ class EmitCode implements IStage {
     $this->_emitOperator($operation['left'], '%', $operation['right'], $class, $method);
   }
 
-  protected function _expressionConcat($operation, $class, $method) {
-    $this->_emitOperator($operation['left'], '.', $operation['right'], $class, $method);
-  }
-
-  protected function _expressionAnd($operation, $class, $method) {
-    $this->_emitOperator($operation['left'], '&&', $operation['right'], $class, $method);
-  }
-
-  protected function _expressionOr($operation, $class, $method) {
-    $this->_emitOperator($operation['left'], '||', $operation['right'], $class, $method);
-  }
-
   protected function _expressionBitwiseOr($operation, $class, $method) {
     $this->_emitOperator($operation['left'], '|', $operation['right'], $class, $method);
   }
@@ -1658,8 +1432,61 @@ class EmitCode implements IStage {
     $this->_emitOperator($operation['left'], '>>', $operation['right'], $class, $method);
   }
 
+  protected function _expressionConcat($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '.', $operation['right'], $class, $method);
+  }
+
+  /*
+   * EXPRESSIONS BOOLEAN OPERATORS
+   */
+
+  protected function _expressionNot($operation, $class, $method) {
+    $this->_append('!');
+    $this->_processExpression($operation['left'], $class, $method);
+  }
+
+  protected function _expressionEquals($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '==', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionNotEquals($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '!=', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionIdentical($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '===', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionNotIdentical($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '!==', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionAnd($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '&&', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionOr($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '||', $operation['right'], $class, $method);
+  }
+
   protected function _expressionInstanceof($operation, $class, $method) {
     $this->_emitOperator($operation['left'], 'instanceof', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionLess($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '<', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionLessEqual($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '<=', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionGreater($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '>', $operation['right'], $class, $method);
+  }
+
+  protected function _expressionGreaterEqual($operation, $class, $method) {
+    $this->_emitOperator($operation['left'], '>=', $operation['right'], $class, $method);
   }
 
   /*
@@ -1705,7 +1532,7 @@ class EmitCode implements IStage {
         $this->_processExpression($key, $class, $method);
         $this->_append('=>');
       }
-      $this->_processExpression($entry, $class, $method);
+      $this->_processExpression($entry['value'], $class, $method);
       $first = false;
     }
 

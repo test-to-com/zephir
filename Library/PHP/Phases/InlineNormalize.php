@@ -222,7 +222,85 @@ class InlineNormalize implements IPhase {
   }
 
   protected function _statementIf(&$class, &$method, $statement) {
-    
+    $before = [];
+    $after = [];
+
+    if (!isset($statement['statements'])) {
+      $statement['statements'] = [];
+    }
+
+    /* IF (EXPR) */
+    $expression = $statement['expr'];
+    // Are we Dealing with Fetch Expression
+    if ($expression['type'] === 'fetch') { // YES
+      /* FETCH STATEMENTS ARE PROCESSED in 2 STAGES
+       * 1. An Assignment Statement is added to statement block
+       * 2. Fetch is replaced by an isset() test...
+       */
+      // Create Assignment Statement
+      $let = [
+        'type' => 'let',
+        'assignments' =>
+        [
+          [
+            'assign-type' => 'variable',
+            'operator' => 'assign',
+            // EXPECTED = $expression['left']['type'] === 'variable'!??
+            'variable' => $expression['left']['value'],
+            'expr' => $expression['right'],
+            'file' => $expression['file'],
+            'line' => $expression['line'],
+            'char' => $expression['char'],
+          ],
+        ],
+        'file' => $expression['file'],
+        'line' => $expression['line'],
+        'char' => $expression['char'],
+      ];
+
+      if (count($statement['statements']) >= 1) {
+        array_unshift($statement['statements'], $let);
+      } else {
+        $statement['statements'][] = $let;
+      }
+    }
+
+    list($prepend, $expression, $append) = $this->_processExpression($class, $method, $statement['expr']);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    $statement['expr'] = $expression;
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
+
+    /* IF (STATEMENTS) */
+    $statement['statements'] = $this->_processStatementBlock($class, $method, $statement['statements']);
+
+    /* ELSE IF */
+    if (isset($statement['elseif_statements'])) {
+      foreach ($statement['elseif_statements'] as $elseif) {
+        /* ELSE IF (EXPR) */
+        list($prepend, $expression, $append) = $this->_processExpression($class, $method, $elseif['expr']);
+        if (isset($prepend) && count($prepend)) {
+          $before = array_merge($before, $prepend);
+        }
+        $elseif['expr'] = $expression;
+        if (isset($append) && count($append)) {
+          $after = array_merge($after, $append);
+        }
+
+        /* ELSE IF (STATEMENTS) */
+        $elseif['statements'] = $this->_processStatementBlock($class, $method, $elseif['statements']);
+      }
+    }
+
+    /* ELSE */
+    if (isset($statement['else_statements'])) {
+      $statement['else_statements'] = $this->_processStatementBlock($class, $method, $statement['else_statements']);
+    }
+
+    return [$before, $statement, $after];
   }
 
   protected function _statementSwitch(&$class, &$method, $statement) {
@@ -234,13 +312,14 @@ class InlineNormalize implements IPhase {
     $after = [];
     $assignments = [];
 
-    foreach ($let['assignments'] as $assigment) {
-      $assigment['type'] = $assigment['operator'];
-      list($prepend, $assigment, $append) = $this->_processStatement($class, $method, $assigment);
+    foreach ($let['assignments'] as $assignment) {
+      $assignment['type'] = 'assign';
+      $assignment['assign-to-type'] = $assignment['assign-type'];
+      list($prepend, $assignment, $append) = $this->_processStatement($class, $method, $assignment);
       if (isset($prepend) && count($prepend)) {
         $before = array_merge($before, $prepend);
       }
-      $assignments[] = $assigment;
+      $assignments[] = $assignment;
       if (isset($append) && count($append)) {
         $after = array_merge($after, $append);
       }
@@ -280,6 +359,39 @@ class InlineNormalize implements IPhase {
     return [$before, $statement, $after];
   }
 
+  protected function _statementEcho(&$class, &$method, $echo) {
+    $before = [];
+    $expressions = [];
+    $after = [];
+
+    // For a function call, we have to check if the parameters use sudo objects
+    foreach ($echo['expressions'] as $expression) {
+      list($prepend, $expression, $append) = $this->_processExpression($class, $method, $expression);
+      if (isset($prepend) && count($prepend)) {
+        $before = array_merge($before, $prepend);
+      }
+      $expressions[] = $expression;
+      if (isset($append) && count($append)) {
+        $after = array_merge($after, $append);
+      }
+    }
+    $echo['expressions'] = $expressions;
+
+    return [$before, $echo, $after];
+  }
+
+  protected function _statementDEFAULT(&$class, &$method, $statement) {
+    $before = [];
+    $after = [];
+
+    if (isset($statement['expr'])) {
+      list($before, $expression, $after) = $this->_processExpression($class, $method, $statement['expr']);
+      $statement['expr'] = $expression;
+    }
+
+    return [$before, $statement, $after];
+  }
+
   protected function _processExpression(&$class, &$method, $expression) {
     $type = $expression['type'];
 
@@ -299,25 +411,52 @@ class InlineNormalize implements IPhase {
     }
   }
 
-  protected function _expressionFCall(&$class, &$method, $expression) {
+  protected function _expressionSCall(&$class, &$method, $scall) {
     $before = [];
     $parameters = [];
     $after = [];
 
-    // For a function call, we have to check if the parameters use sudo objects
-    foreach ($expression['parameters'] as $parameter) {
-      list($prepend, $parameter, $append) = $this->_processExpression($class, $method, $parameter['parameter']);
-      if (isset($prepend) && count($prepend)) {
-        $before = array_merge($before, $prepend);
-      }
-      $parameters[] = $parameter;
-      if (isset($append) && count($append)) {
-        $after = array_merge($after, $append);
+    // Do we have Parameters for the Call?
+    if (isset($scall['parameters'])) { // YES
+      // For a function call, we have to check if the parameters use sudo objects
+      foreach ($scall['parameters'] as $parameter) {
+        list($prepend, $parameter, $append) = $this->_processExpression($class, $method, $parameter['parameter']);
+        if (isset($prepend) && count($prepend)) {
+          $before = array_merge($before, $prepend);
+        }
+        $parameters[] = $parameter;
+        if (isset($append) && count($append)) {
+          $after = array_merge($after, $append);
+        }
       }
     }
-    $expression['parameters'] = $parameters;
+    $scall['parameters'] = $parameters;
 
-    return [$before, $expression, $after];
+    return [$before, $scall, $after];
+  }
+
+  protected function _expressionFCall(&$class, &$method, $fcall) {
+    $before = [];
+    $parameters = [];
+    $after = [];
+
+    // Do we have Parameters for the Call?
+    if (isset($fcall['parameters'])) { // YES
+      // For a function call, we have to check if the parameters use sudo objects
+      foreach ($fcall['parameters'] as $parameter) {
+        list($prepend, $parameter, $append) = $this->_processExpression($class, $method, $parameter['parameter']);
+        if (isset($prepend) && count($prepend)) {
+          $before = array_merge($before, $prepend);
+        }
+        $parameters[] = $parameter;
+        if (isset($append) && count($append)) {
+          $after = array_merge($after, $append);
+        }
+      }
+    }
+    $fcall['parameters'] = $parameters;
+
+    return [$before, $fcall, $after];
   }
 
   protected function _expressionMCall(&$class, &$method, $expression) {
@@ -400,6 +539,49 @@ class InlineNormalize implements IPhase {
     return [$before, $expression, $after];
   }
 
+  protected function _expressionNew(&$class, &$method, $new) {
+    $before = [];
+    $parameters = [];
+    $after = [];
+
+    // Do we have Parameters for the new?
+    if (isset($new['parameters'])) { // YES
+      // For a function call, we have to check if the parameters use sudo objects
+      foreach ($new['parameters'] as $parameter) {
+        list($prepend, $parameter, $append) = $this->_processExpression($class, $method, $parameter['parameter']);
+        if (isset($prepend) && count($prepend)) {
+          $before = array_merge($before, $prepend);
+        }
+        $parameters[] = $parameter;
+        if (isset($append) && count($append)) {
+          $after = array_merge($after, $append);
+        }
+      }
+    }
+    $new['parameters'] = $parameters;
+
+    return [$before, $new, $after];
+  }
+
+  protected function _expressionNewType(&$class, &$method, $newtype) {
+
+    // Transform New Type Expression
+    switch ($newtype['internal-type']) {
+      case 'array':
+        $expression = [
+          'type' => 'empty-array',
+          'file' => $newtype['file'],
+          'line' => $newtype['line'],
+          'char' => $newtype['char']
+        ];
+        break;
+      default:
+        throw new \Exception("Unhandled new type [{$newtype['internal-type']}] in line [{$newtype['line']}]");
+    }
+
+    return [null, $expression, null];
+  }
+
   protected function _expressionClosureArrow(&$class, &$method, $expression) {
     $closure = [
       'type' => 'closure',
@@ -438,47 +620,85 @@ class InlineNormalize implements IPhase {
     return [null, $closure, null];
   }
 
+  protected function _expressionFetch(&$class, &$method, $fetch) {
+    // Replace Fetch with isset(....)
+    $expression = [
+      'type' => 'isset',
+      'left' => $fetch['right'],
+      'file' => $fetch['file'],
+      'line' => $fetch['line'],
+      'char' => $fetch['char'],
+    ];
+
+    return [null, $expression, null];
+  }
+
   protected function _expressionArray(&$class, &$method, $expression) {
     $before = [];
     $after = [];
-    $values = [];
+    $entries = [];
 
-    foreach ($expression['left'] as $value) {
-      list($prepend, $value, $append) = $this->_processExpression($class, $method, $value['value']);
+    foreach ($expression['left'] as $entry) {
+      list($prepend, $value, $append) = $this->_processExpression($class, $method, $entry['value']);
       if (isset($prepend) && count($prepend)) {
         $before = array_merge($before, $prepend);
       }
-      $values[] = $value;
+      $entry['value'] = $value;
+      $entries[] = $entry;
       if (isset($append) && count($append)) {
         $after = array_merge($after, $append);
       }
     }
-    $expression['left'] = $values;
+    $expression['left'] = $entries;
 
     return [$before, $expression, $after];
   }
 
-  protected function _expressionList(&$class, &$method, $list) {
+  protected function _expressionArrayAccess(&$class, &$method, $expression) {
     $before = [];
     $after = [];
 
-    // Process Left Expression
-    list($prepend, $left, $append) = $this->_processExpression($class, $method, $list['left']);
-    if (isset($prepend) && count($prepend)) {
-      $before = array_merge($before, $prepend);
-    }
-    $list['left'] = $left;
-    if (isset($append) && count($append)) {
-      $after = array_merge($after, $append);
-    }
-
-    return [$before, $list, $after];
-  }
-
-  protected function _expressionConcat(&$class, &$method, $expression) {
-    $before = [];
-    $after = [];
-
+    /* TODO: Array-Access uses a nested structure for multiple indices
+     * ex: lines[i][j] produces an AST of 
+     * $expression=[
+     *   'type' => 'array-access',
+     *   'left' => [
+     *     'type' => 'array-access',
+     *     'left' => [
+     *       'type' => 'variable',
+     *       'value' => 'lines'
+     *     ],
+     *     'right' => [
+     *       'type' => 'variable',
+     *       'value' => 'i'
+     *     ]
+     *   ]
+     *   'right => [
+     *     'type' => 'variable',
+     *     'value' => 'j'
+     *   ]
+     * ]
+     * 
+     * We should flatten AST to something like (it makes more sense)
+     * $expression=[
+     *   'type' => 'array-access',
+     *   'left' => [
+     *       'type' => 'variable',
+     *       'value' => 'lines'
+     *   ]
+     *   'right => [
+     *     [
+     *       'type' => 'variable',
+     *       'value' => 'i'
+     *     ]
+     *     [
+     *       'type' => 'variable',
+     *       'value' => 'j'
+     *     ]
+     *   ]
+     * ]
+     * 
+     */
     // Process Left Expression
     list($prepend, $left, $append) = $this->_processExpression($class, $method, $expression['left']);
     if (isset($prepend) && count($prepend)) {
@@ -503,7 +723,36 @@ class InlineNormalize implements IPhase {
   }
 
   protected function _expressionDEFAULT(&$class, &$method, $expression) {
-    return [null, $expression, null];
+    $before = [];
+    $after = [];
+
+    // Does the Expression have a 'left' expression?
+    if (isset($expression['left'])) { // YES: Normalize Left Expression
+      // Process Left Expression
+      list($prepend, $left, $append) = $this->_processExpression($class, $method, $expression['left']);
+      if (isset($prepend) && count($prepend)) {
+        $before = array_merge($before, $prepend);
+      }
+      $expression['left'] = $left;
+      if (isset($append) && count($append)) {
+        $after = array_merge($after, $append);
+      }
+    }
+
+    // Does the Expression have a 'right' expression?
+    if (isset($expression['right'])) { // YES: Normalize Right Expression
+      // Process Right Expression
+      list($prepend, $right, $append) = $this->_processExpression($class, $method, $expression['right']);
+      if (isset($prepend) && count($prepend)) {
+        $before = array_merge($before, $prepend);
+      }
+      $expression['right'] = $right;
+      if (isset($append) && count($append)) {
+        $after = array_merge($after, $append);
+      }
+    }
+    
+    return [$before, $expression, $after];
   }
 
   protected function _expandArrayJoin(&$class, &$method, $expression) {
