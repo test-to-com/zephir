@@ -96,7 +96,7 @@ class Compiler implements ICompiler {
 
         // Emite PHP Code for all the ZEP files in the Directory
         $compiler = $this;
-        $fs->enumerateFiles(function($path) use($emitter) {
+        $fs->enumerateFiles(function($path) use($compiler) {
           $count_path = strlen($path);
           $extension = $count_path > 4 ? strtolower(substr($path, $count_path - 4)) : null;
           if (isset($extension) && ($extension === '.zep')) {
