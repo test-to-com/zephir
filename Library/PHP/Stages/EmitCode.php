@@ -782,16 +782,14 @@ class EmitCode implements IStage {
     echo "}\n";
   }
 
-  protected function _statementIf($if, $class = null, $method = null) {
-
-    /* IF (EXPR) */
+  protected function _statementIfExpression($if_expr, $class = null, $method = null) {
     $this->_append(['if', '(']);
     // TODO: Move to the Flag to Configuration File
     $config_ifLFExpressions = true; // Function Parameters on new line?
     $this->_flush($config_ifLFExpressions);
     $this->_indent($config_ifLFExpressions);
 
-    $this->_processExpression($if['expr'], $class, $method);
+    $this->_processExpression($if_expr['expr'], $class, $method);
 
     $this->_flush($config_ifLFExpressions);
     $this->_unindent($config_ifLFExpressions);
@@ -804,18 +802,27 @@ class EmitCode implements IStage {
     /* IF { statements } */
     $this->_indent();
 
-    if (isset($if['statements'])) {
-      $this->_processStatementBlock($if['statements'], $class, $method);
+    if (isset($if_expr['statements'])) {
+      $this->_processStatementBlock($if_expr['statements'], $class, $method);
     }
 
     // Garauntee that we flush any pending lines
     $this->_flush();
     $this->_unindent();
-    $this->_append('}', true);
+    $this->_append('}');
+  }
+
+  protected function _statementIf($if, $class = null, $method = null) {
+
+    /* IF (EXPR) */
+    $this->_statementIfExpression($if, $class, $method);
 
     /* ELSE IF { statements } */
     if (isset($if['elseif_statements'])) {
-      throw new Exception("TODO Implement ELSE-IF");
+      foreach ($if['elseif_statements'] as $else_if) {
+        $this->_append('else');
+        $this->_statementIfExpression($else_if, $class, $method);
+      }
     }
 
     /* ELSE { statements } */
@@ -937,22 +944,6 @@ class EmitCode implements IStage {
     $this->_redirectAST($ast['type'], $ast);
   }
 
-  protected function _emitFetchCheck($ast) {
-    $right = $ast['right'];
-    echo 'isset(';
-    $this->_redirectAST($right['type'], $right);
-    echo ')';
-  }
-
-  protected function _emitFetchAssign($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-    $this->_emitVariable($left);
-    echo '=';
-    $this->_redirectAST($right['type'], $right);
-    echo ";\n";
-  }
-
   protected function _emitReference($ast) {
     throw new \Exception('TODO');
   }
@@ -961,69 +952,6 @@ class EmitCode implements IStage {
     $left = $ast['left'];
     echo '!';
     $this->_redirectAST($left['type'], $left);
-  }
-
-  protected function _emitBitwiseNot($ast) {
-    $left = $ast['left'];
-    echo '~';
-    $this->_redirectAST($left['type'], $left);
-  }
-
-  protected function _emitMinus($ast) {
-    $left = $ast['left'];
-
-    echo '-';
-    $this->_redirectAST($left['type'], $left);
-  }
-
-  protected function _emitPlus($ast) {
-    $left = $ast['left'];
-
-    echo '+';
-    $this->_redirectAST($left['type'], $left);
-  }
-
-  protected function _emitIsset($ast) {
-    /* TODO
-     * Zephir isset does more than the normal php isset
-     */
-    $left = $ast['left'];
-    $type = $left['type'];
-    switch ($type) {
-      case 'array-access':
-        echo 'zephir_isset_array(';
-        $this->_emitVariable($left['left']);
-        echo ', ';
-        $this->_redirectAST($left['right']['type'], $left['right']);
-        echo ')';
-        break;
-      case 'property-access':
-      case 'property-string-access':
-        echo 'zephir_isset_property(';
-        $this->_emitVariable($left['left']);
-        echo ', \'';
-        switch ($left['right']['type']) {
-          case 'variable':
-            $this->_emitVariable($left['right'], true);
-            break;
-          case 'string':
-            echo $left['right']['value'];
-            break;
-          default:
-            throw new \Exception("TODO - 1 - isset([{$type}])");
-        }
-        echo '\')';
-        break;
-      case 'property-dynamic-access':
-        echo 'zephir_isset_property(';
-        $this->_emitVariable($left['left']);
-        echo ', ';
-        $this->_redirectAST($left['right']['type'], $left['right']);
-        echo ')';
-        break;
-      default:
-        throw new \Exception("TODO - 2 - isset([{$type}])");
-    }
   }
 
   protected function _emitRequire($ast) {
@@ -1368,6 +1296,21 @@ class EmitCode implements IStage {
     $this->_append('(');
     $this->_processExpression($list['left'], $class, $method);
     $this->_append(')');
+  }
+
+  protected function _expressionBitwiseNot($bitwise_not, $class, $method) {
+    $this->_append('~');
+    $this->_processExpression($bitwise_not['left'], $class, $method);
+  }
+
+  protected function _expressionMinus($minus, $class, $method) {
+    $this->_append('-');
+    $this->_processExpression($minus['left'], $class, $method);
+  }
+
+  protected function _expressionPlus($plus, $class, $method) {
+    $this->_append('+');
+    $this->_processExpression($plus['left'], $class, $method);
   }
 
   protected function _expressionAdd($operation, $class, $method) {

@@ -279,20 +279,7 @@ class InlineNormalize implements IPhase {
 
     /* ELSE IF */
     if (isset($statement['elseif_statements'])) {
-      foreach ($statement['elseif_statements'] as $elseif) {
-        /* ELSE IF (EXPR) */
-        list($prepend, $expression, $append) = $this->_processExpression($class, $method, $elseif['expr']);
-        if (isset($prepend) && count($prepend)) {
-          $before = array_merge($before, $prepend);
-        }
-        $elseif['expr'] = $expression;
-        if (isset($append) && count($append)) {
-          $after = array_merge($after, $append);
-        }
-
-        /* ELSE IF (STATEMENTS) */
-        $elseif['statements'] = $this->_processStatementBlock($class, $method, $elseif['statements']);
-      }
+      $statement['elseif_statements'] = $this->_processStatementBlock($class, $method, $statement['elseif_statements']);
     }
 
     /* ELSE */
@@ -583,6 +570,15 @@ class InlineNormalize implements IPhase {
       case 'array':
         $expression = [
           'type' => 'empty-array',
+          'file' => $newtype['file'],
+          'line' => $newtype['line'],
+          'char' => $newtype['char']
+        ];
+        break;
+      case 'string':
+        $expression = [
+          'type' => 'string',
+          'value' => '',
           'file' => $newtype['file'],
           'line' => $newtype['line'],
           'char' => $newtype['char']
