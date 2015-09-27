@@ -206,19 +206,19 @@ class InlineNormalize implements IPhase {
   }
 
   protected function _statementLoop(&$class, &$method, $statement) {
-    
+    throw new \Exception("TODO Implement");
   }
 
   protected function _statementDoWhile(&$class, &$method, $statement) {
-    
+    throw new \Exception("TODO Implement");
   }
 
   protected function _statementWhile(&$class, &$method, $statement) {
-    
+    throw new \Exception("TODO Implement");
   }
 
   protected function _statementFor(&$class, &$method, $statement) {
-    
+    throw new \Exception("TODO Implement");
   }
 
   protected function _statementIf(&$class, &$method, $statement) {
@@ -304,7 +304,7 @@ class InlineNormalize implements IPhase {
   }
 
   protected function _statementSwitch(&$class, &$method, $statement) {
-    
+    throw new \Exception("TODO Implement");
   }
 
   protected function _statementLet(&$class, &$method, $let) {
@@ -409,6 +409,20 @@ class InlineNormalize implements IPhase {
     } else { // NO: Aborts
       throw new \Exception("Unhandled expression type [{$type}] in line [{$expression['line']}]");
     }
+
+    /* TODO Implement Post Processing of Expressions
+     * Idea: where normally processing performs expansion (i.e. convert sudoobject
+     * method calls, to actual function calls). Post processing would perform
+     * compression (i.e. if a List only has a single parameter, than it might
+     * be better, for future processing, if we replace the list with it's
+     * parameter value:
+     * 
+     * Example scenario: (from range.zep)
+     * 		return (0...10)->join('-'); 
+     * 
+     * this requires that the sudo object mcall, recognize the list, and
+     * try to extract it's parameters, to see if it applies.
+     */
   }
 
   protected function _expressionSCall(&$class, &$method, $scall) {
@@ -482,21 +496,20 @@ class InlineNormalize implements IPhase {
 
     // STEP 2: Determine if we are dealing with a sudo object call
     $sudoobject = null;
+
+    // Need to make sure that we expand possible values, before using them
     $variable = $expression['variable'];
+    list($prepend, $variable, $append) = $this->_processExpression($class, $method, $variable);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    $expression['variable'] = $variable;
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
+
     switch ($variable['type']) {
       case 'array':
-        $sudoobject = 'array';
-
-        // Need to make sure that we expand any array values, before using them
-        list($prepend, $variable, $append) = $this->_processExpression($class, $method, $variable);
-        if (isset($prepend) && count($prepend)) {
-          $before = array_merge($before, $prepend);
-        }
-        $expression['variable'] = $variable;
-        if (isset($append) && count($append)) {
-          $after = array_merge($after, $append);
-        }
-        break;
       case 'string':
         $sudoobject = 'string';
         break;
@@ -633,6 +646,86 @@ class InlineNormalize implements IPhase {
     return [null, $expression, null];
   }
 
+  protected function _expressionIrange(&$class, &$method, $irange) {
+    $before = [];
+    $after = [];
+
+    // Process Left
+    list($prepend, $left, $append) = $this->_processExpression($class, $closure, $irange['left']);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
+
+    // Process Right
+    list($prepend, $right, $append) = $this->_processExpression($class, $closure, $irange['right']);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
+
+    /* TODO
+     * Add Type Hint (stating that the return result is an array, so that
+     * it can be combiner with an array sudo method call)
+     */
+
+    /* MAP AST to equivalent PHP function call
+     * range($irange['left'], $irange['right']) 
+     */
+    $function = [
+      'type' => 'fcall',
+      'name' => 'range',
+      'call-type' => 1,
+      'parameters' => [$left, $right],
+      'file' => $irange['file'],
+      'line' => $irange['line'],
+      'char' => $irange['char']
+    ];
+
+    return [$before, $function, $after];
+  }
+
+  protected function _expressionErange(&$class, &$method, $erange) {
+    /* TODO
+     * Add Type Hint (stating that the return result is an array, so that
+     * it can be combiner with an array sudo method call)
+     */
+
+    /* TODO consider using a single custom function to handle erange
+     * Benefits:
+     * 1. More extensive type checking and handling of empty ranges.
+     */
+
+    /* MAP AST to equivalent PHP function calls
+     * array_shift(array_pop(range($erange['left'], $erange['right'])))
+     */
+    list($before, $range, $after) = $this->_expressionIrange($class, $method, $erange);
+    $array_pop = [
+      'type' => 'fcall',
+      'name' => 'array_pop',
+      'call-type' => 1,
+      'parameters' => [$range],
+      'file' => $erange['file'],
+      'line' => $erange['line'],
+      'char' => $erange['char']
+    ];
+    $array_shift = [
+      'type' => 'fcall',
+      'name' => 'array_shift',
+      'call-type' => 1,
+      'parameters' => [$array_pop],
+      'file' => $erange['file'],
+      'line' => $erange['line'],
+      'char' => $erange['char']
+    ];
+
+    return [$before, $array_shift, $after];
+  }
+
   protected function _expressionArray(&$class, &$method, $expression) {
     $before = [];
     $after = [];
@@ -751,7 +844,7 @@ class InlineNormalize implements IPhase {
         $after = array_merge($after, $append);
       }
     }
-    
+
     return [$before, $expression, $after];
   }
 

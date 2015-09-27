@@ -53,8 +53,13 @@ class Compact implements IStage {
 
     foreach ($ast as $index => $entry) {
 
-      if ($entry['type'] === 'class') {
-        $entry = $this->_compactClass($entry);
+      switch ($entry['type']) {
+        case 'class':
+          $entry = $this->_compactClass($entry);
+          break;
+        case 'interface':
+          $entry = $this->_compactInterface($entry);
+          break;
       }
 
       if (isset($entry)) {
@@ -67,8 +72,7 @@ class Compact implements IStage {
   }
 
   /**
-   * Converts a Comment AST Entry into a Comment Block Entry, to be merged into
-   * the AST of the Next Statement Block
+   * Compacts the Class Definition
    * 
    * @param array $ast Comment AST
    * @return array Comment Block Entry or Null, if an empty comment
@@ -145,7 +149,7 @@ class Compact implements IStage {
       $class['methods'] = $map;
 
       // Clear Class Definitions
-      $class['definition'];
+      unset($class['definition']);
     } else {
       $class['constants'] = [];
       $class['properties'] = [];
@@ -153,6 +157,94 @@ class Compact implements IStage {
     }
 
     return $class;
+  }
+
+  /**
+   * Compact Interface Definition
+   * 
+   * @param array $ast Comment AST
+   * @return array Comment Block Entry or Null, if an empty comment
+   */
+  protected function _compactInterface($interface) {
+
+    // Get Class Definition
+    $definition = isset($interface['definition']) ? $interface['definition'] : null;
+    if (isset($definition)) {
+
+      // Do we have Class Constants to Process?
+      $map = [];
+      $constants = isset($definition['constants']) ? $definition['constants'] : null;
+      if (isset($constants)) { // YES
+        // Convert Constants Array to Constants Map
+        foreach ($constants as $constant) {
+          $key = $constant['name'];
+          if (array_key_exists($key, $map)) {
+            throw new \Exception("Duplicate constant [{$key}] definition.");
+          }
+          $map[$key] = $constant;
+        }
+
+        // Remove Constants Definition
+        unset($interface['definition']['constants']);
+      }
+
+      // Create Properties Map
+      $interface['constants'] = $map;
+
+      // Do we have Class Properties to Process?
+      $map = [];
+      $properties = isset($definition['properties']) ? $definition['properties'] : null;
+      if (isset($properties)) { // YES
+        // Convert Properties Array to Properties Map
+        foreach ($properties as $property) {
+          $key = $property['name'];
+          if (array_key_exists($key, $map)) {
+            throw new \Exception("Duplicate property [{$key}] definition.");
+          }
+          $map[$key] = $property;
+        }
+
+        // Remove Properties Definition
+        unset($interface['definition']['properties']);
+      }
+
+      // Create Properties Map
+      $interface['properties'] = $map;
+
+      // Do we have Class Methods to Process?
+      $map = [];
+      $methods = isset($definition['methods']) ? $definition['methods'] : null;
+      if (isset($methods)) { // YES
+        // Convert Methods Array to Methods Map
+        foreach ($methods as $method) {
+          $key = $method['name'];
+          if (array_key_exists($key, $map)) {
+            throw new \Exception("Duplicate method [{$key}] definition.");
+          }
+
+          // Compact Method
+          $method = $this->_compactMethod($method);
+
+          // Add Entry to Map
+          $map[$key] = $method;
+        }
+
+        // Remove Methods Array
+        unset($interface['definition']['methods']);
+      }
+
+      // Create Methods Map
+      $interface['methods'] = $map;
+
+      // Clear Interface Definitions
+      unset($interface['definition']);
+    } else {
+      $interface['constants'] = [];
+      $interface['properties'] = [];
+      $interface['methods'] = [];
+    }
+
+    return $interface;
   }
 
   protected function _compactMethod($method) {

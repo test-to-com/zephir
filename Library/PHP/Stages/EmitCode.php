@@ -299,7 +299,7 @@ class EmitCode implements IStage {
     /*
      * INTERFACE HEADER
      */
-    $this->flush();
+    $this->_flush();
     $this->_append(["interface", $interface['name']]);
 
     // TODO: Move to the Flag to Configuration File
@@ -328,11 +328,11 @@ class EmitCode implements IStage {
     foreach ($section_order as $order) {
       $section = isset($interface[$order]) ? $interface[$order] : null;
       if (isset($section)) {
-        $handler = $this->_handlerName('_emitClass', $section);
+        $handler = $this->_handlerName('_emitClass', $order);
         if (method_exists($this, $handler)) {
           $this->$handler($interface, $section);
         } else {
-          throw new \Exception("Unhandled section type [{$section}]");
+          throw new \Exception("Unhandled section type [{$order}]");
         }
       }
     }
@@ -1102,30 +1102,8 @@ class EmitCode implements IStage {
     echo '\')';
   }
 
-  protected function _emitIRange($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    echo 'range(';
-    $this->_redirectAST($left['type'], $left);
-    echo ',';
-    $this->_redirectAST($right['type'], $right);
-    echo ')';
-  }
-
-  protected function _emitERange($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    echo 'array_shift(array_pop(range(';
-    $this->_redirectAST($left['type'], $left);
-    echo ',';
-    $this->_redirectAST($right['type'], $right);
-    echo ')))';
-  }
-
   /**
-   * Class Method Call
+   * Class Static Method Call
    * 
    * @param type $ast
    */
@@ -1166,7 +1144,7 @@ class EmitCode implements IStage {
   }
 
   /**
-   * Class Method Call
+   * Function Call
    * 
    * @param type $ast
    */
@@ -1540,12 +1518,12 @@ class EmitCode implements IStage {
     $this->_append(']');
   }
 
-  protected function _expressionEmptyArray($ast) {
+  protected function _expressionEmptyArray($array, $class = null, $method = null) {
     $this->_append('[]');
   }
 
-  protected function _emitConstant($ast) {
-    echo $ast['value'];
+  protected function _expressionConstant($constant, $class = null, $method = null) {
+    $this->_append($constant['value']);
   }
 
   protected function _handlerName($prefix, $name) {
