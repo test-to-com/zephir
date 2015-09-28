@@ -333,8 +333,19 @@ class InlineNormalize implements IPhase {
 
     foreach ($let['assignments'] as $assignment) {
       switch ($assignment['assign-type']) {
+        case "object-property-incr":
+          $assignment['type'] = 'incr';
+          $assignment['assign-to-type'] = 'object-property';
+          unset($assignment['assign-type']);
+          break;
+        case "object-property-decr":
+          $assignment['type'] = 'decr';
+          $assignment['assign-to-type'] = 'object-property';
+          unset($assignment['assign-type']);
+          break;
         case 'incr':
         case 'decr':
+          $assignment['assign-to-type'] = 'variable';
           /* Convert i++ and i-- to actual statements, rather than use them a sub-type of assignment
            * The idea being that, an assignment has a LHS and a RHS
            */

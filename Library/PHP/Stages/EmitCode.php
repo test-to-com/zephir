@@ -504,11 +504,33 @@ class EmitCode implements IStage {
   }
 
   protected function _statementIncr($assign, $class, $method) {
-    $this->_append(["\${$assign['variable']}", '++']);
+    switch ($assign['assign-to-type']) {
+      case 'variable':
+        $this->_append("\${$assign['variable']}");
+        break;
+      case 'object-property':
+        $this->_append(["\${$assign['variable']}", '->', $assign['property']]);
+        break;
+      default:
+        throw new \Exception("Unhandled Increment Type [{$assign['assign-to-type']}] in line [{$assign['line']}]");
+    }
+
+    $this->_append('++');
   }
 
   protected function _statementDecr($assign, $class, $method) {
-    $this->_append(["\${$assign['variable']}, '--"]);
+    switch ($assign['assign-to-type']) {
+      case 'variable':
+        $this->_append("\${$assign['variable']}");
+        break;
+      case 'object-property':
+        $this->_append(["\${$assign['variable']}", '->', $assign['property']]);
+        break;
+      default:
+        throw new \Exception("Unhandled Increment Type [{$assign['assign-to-type']}] in line [{$assign['line']}]");
+    }
+
+    $this->_append('--');
   }
 
   protected function _statementAssign($assign, $class, $method) {
@@ -518,31 +540,46 @@ class EmitCode implements IStage {
         $this->_append("\${$assign['variable']}");
         break;
       case 'variable-append':
-        $this->_append(["\${$assign['variable']}", '[]']);
+        $this->_append(["\${$assign['variable']}", '[', ']']);
+        break;
+      case 'array-index':
+        $this->_append("\${$assign['variable']}");
+        $this->_statementAssignArrayIndex($assign['index-expr'], $class, $method);
+        break;
+      case 'array-index-append':
+        $this->_append("\${$assign['variable']}");
+        $this->_statementAssignArrayIndex($assign['index-expr'], $class, $method);
+        $this->_append(['[', ']']);
         break;
       case 'object-property':
         $this->_append(["\${$assign['variable']}", '->', $assign['property']]);
         break;
       case 'object-property-append':
-        $this->_append(["\${$assign['variable']}", '->', $assign['property'], '[]']);
+        $this->_append(["\${$assign['variable']}", '->', $assign['property'], '[', ']']);
+        break;
+      case 'object-property-array-index':
+        $this->_append(["\${$assign['variable']}", '->', $assign['property']]);
+        $this->_statementAssignArrayIndex($assign['index-expr'], $class, $method);
+        break;
+      case 'object-property-array-index-append':
+        $this->_append(["\${$assign['variable']}", '->', $assign['property']]);
+        $this->_statementAssignArrayIndex($assign['index-expr'], $class, $method);
+        $this->_append(['[', ']']);
         break;
       case 'static-property':
         $this->_append([$assign['variable'], '::', "\${$assign['property']}"]);
         break;
       case 'static-property-append':
-        $this->_append([$assign['variable'], '::', "\${$assign['property']}", '[]']);
+        $this->_append([$assign['variable'], '::', "\${$assign['property']}", '[', ']']);
         break;
-      case 'array-index':
-        $this->_append(["\${$assign['variable']}", '[']);
-        $first = true;
-        foreach ($assign['index-expr'] as $index) {
-          if (!$first) {
-            $this->_append(',');
-          }
-          $this->_processExpression($index, $class, $method);
-          $first = false;
-        }
-        $this->_append(']');
+      case 'static-property-array-index':
+        $this->_append([$assign['variable'], '::', "\${$assign['property']}"]);
+        $this->_statementAssignArrayIndex($assign['index-expr'], $class, $method);
+        break;
+      case 'static-property-array-index-append':
+        $this->_append([$assign['variable'], '::', "\${$assign['property']}"]);
+        $this->_statementAssignArrayIndex($assign['index-expr'], $class, $method);
+        $this->_append(['[', ']']);
         break;
       default:
         throw new \Exception("Unhandled Assignment Type [{$assign['assign-type']}] in line [{$assign['line']}]");
@@ -572,6 +609,19 @@ class EmitCode implements IStage {
     // PROCESS R.H.S Expression
     $this->_processExpression($assign['expr'], $class, $method);
     $this->_appendEOS();
+  }
+
+  protected function _statementAssignArrayIndex($index, $class, $method) {
+    $this->_append('[');
+    $first = true;
+    foreach ($index as $index) {
+      if (!$first) {
+        $this->_append([']', '[']);
+      }
+      $this->_processExpression($index, $class, $method);
+      $first = false;
+    }
+    $this->_append(']');
   }
 
   protected function _statementFor($for, $class, $method) {
