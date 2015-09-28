@@ -743,72 +743,71 @@ class InlineNormalize implements IPhase {
     return [$before, $expression, $after];
   }
 
-  protected function _expressionArrayAccess(&$class, &$method, $expression) {
+  protected function _expressionPropertyStringAccess(&$class, &$method, $expression) {
     $before = [];
     $after = [];
 
-    /* TODO: Array-Access uses a nested structure for multiple indices
-     * ex: lines[i][j] produces an AST of 
-     * $expression=[
-     *   'type' => 'array-access',
-     *   'left' => [
-     *     'type' => 'array-access',
-     *     'left' => [
-     *       'type' => 'variable',
-     *       'value' => 'lines'
-     *     ],
-     *     'right' => [
-     *       'type' => 'variable',
-     *       'value' => 'i'
-     *     ]
-     *   ]
-     *   'right => [
-     *     'type' => 'variable',
-     *     'value' => 'j'
-     *   ]
-     * ]
-     * 
-     * We should flatten AST to something like (it makes more sense)
-     * $expression=[
-     *   'type' => 'array-access',
-     *   'left' => [
-     *       'type' => 'variable',
-     *       'value' => 'lines'
-     *   ]
-     *   'right => [
-     *     [
-     *       'type' => 'variable',
-     *       'value' => 'i'
-     *     ]
-     *     [
-     *       'type' => 'variable',
-     *       'value' => 'j'
-     *     ]
-     *   ]
-     * ]
-     * 
-     */
-    // Process Left Expression
-    list($prepend, $left, $append) = $this->_processExpression($class, $method, $expression['left']);
-    if (isset($prepend) && count($prepend)) {
-      $before = array_merge($before, $prepend);
-    }
-    $expression['left'] = $left;
-    if (isset($append) && count($append)) {
-      $after = array_merge($after, $append);
-    }
+    // Step 1: Create Local Variable and Assignment Statement
+    list($tv_name, $tv_statement) = $this->_newLocalVariable($class, $method, $expression['right']);
+    $before[] = $tv_statement;
 
-    // Process Right Expression
-    list($prepend, $right, $append) = $this->_processExpression($class, $method, $expression['right']);
-    if (isset($prepend) && count($prepend)) {
-      $before = array_merge($before, $prepend);
-    }
-    $expression['right'] = $right;
-    if (isset($append) && count($append)) {
-      $after = array_merge($after, $append);
-    }
+    // Step 2: Convert Property String Access to Property Dynamic Access
+    $expression['type'] = 'property-dynamic-access';
+    $expression['right'] = [
+      'type' => 'variable',
+      'value' => $tv_name,
+      'file' => $expression['right']['file'],
+      'line' => $expression['right']['line'],
+      'char' => $expression['right']['char']
+    ];
 
     return [$before, $expression, $after];
+  }
+
+  protected function _newLocalVariable(&$class, &$method, $expression) {
+    // Can we handle the Variable Type
+    switch ($expression['type']) {
+      case 'string':
+        $v_prefix = '__t_s_';
+        break;
+      default:
+        throw new \Exception("Can't Create Local Variable of type [{$expression['type']}] in line [{$expression['line']}].");
+    }
+
+    // Find a Valid Local Variable Name
+    $i = 1;
+    $locals = $method['locals'];
+    do {
+      $v_name = "{$v_prefix}{$i}";
+      if (!array_key_exists($v_name, $locals)) {
+        break;
+      }
+      $i++;
+    } while (true);
+
+    // Create Assignment Statement
+    $assignment = [
+      'type' => 'assign',
+      'operator' => 'assign',
+      'assign-type' => 'variable',
+      'assign-to-type' => 'variable',
+      'variable' => $v_name,
+      'expr' => $expression,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+    
+    // Add Variable to Method Locals
+    $method['locals'][$v_name] = [
+      'name' => $v_name,
+      'data-type' => $expression['type'],
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+      
+    return [$v_name, $assignment];
   }
 
   protected function _expressionDEFAULT(&$class, &$method, $expression) {

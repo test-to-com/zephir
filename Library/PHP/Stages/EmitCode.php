@@ -1188,6 +1188,15 @@ class EmitCode implements IStage {
     $this->_property = false;
   }
 
+  protected function _expressionPropertyDynamicAccess($expression, $class = null, $method = null) {
+    $left = $expression['left'];
+    $right = $expression['right'];
+    $this->_processExpression($left, $class, $method);
+    $this->_append('->');
+    // Flag the Next Expression as Property Expression
+    $this->_processExpression($right, $class, $method);
+  }
+  
   protected function _expressionStaticPropertyAccess($expression, $class = null, $method = null) {
     $left = $expression['left'];
     $right = $expression['right'];
