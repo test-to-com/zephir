@@ -52,18 +52,30 @@ class IssetTest
 	public function testIssetDynamicProperty1()
 	{
 		var g;
-		let g = this->{"s"};
+    string s="s";
+		let g = this->{s};
 		if isset g["a"] {
 			return true;
 		}
 		return false;
 	}
 
-	public function testIssetDynamicProperty2(var inp)
+	public function testIssetDynamicProperty2()
+	{
+		var g;
+    string s;
+    let s = "s";
+		let g = this->{s};
+		if isset g["a"] {
+			return true;
+		}
+		return false;
+	}
+
+	public function testIssetDynamicProperty3(var inp)
 	{
 		var g;
 		let g = inp->{"s"};
-
 		if isset g["a"] {
 			return true;
 		}
