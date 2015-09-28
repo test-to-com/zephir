@@ -214,11 +214,43 @@ class InlineNormalize implements IPhase {
   }
 
   protected function _statementWhile(&$class, &$method, $statement) {
-    throw new \Exception("TODO Implement");
+    $before = [];
+    $after = [];
+
+    /* WHILE (EXPR) */
+    list($prepend, $expression, $append) = $this->_processExpression($class, $method, $statement['expr']);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    $statement['expr'] = $expression;
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
+
+    /* WHILE (STATEMENTS) */
+    $statement['statements'] = $this->_processStatementBlock($class, $method, $statement['statements']);
+
+    return [$before, $statement, $after];
   }
 
   protected function _statementFor(&$class, &$method, $statement) {
-    throw new \Exception("TODO Implement");
+    $before = [];
+    $after = [];
+
+    /* FOR (EXPR) */
+    list($prepend, $expression, $append) = $this->_processExpression($class, $method, $statement['expr']);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    $statement['expr'] = $expression;
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
+
+    /* FOR (STATEMENTS) */
+    $statement['statements'] = $this->_processStatementBlock($class, $method, $statement['statements']);
+
+    return [$before, $statement, $after];
   }
 
   protected function _statementIf(&$class, &$method, $statement) {
@@ -300,8 +332,19 @@ class InlineNormalize implements IPhase {
     $assignments = [];
 
     foreach ($let['assignments'] as $assignment) {
-      $assignment['type'] = 'assign';
-      $assignment['assign-to-type'] = $assignment['assign-type'];
+      switch ($assignment['assign-type']) {
+        case 'incr':
+        case 'decr': 
+          /* Convert i++ and i-- to actual statements, rather than use them a sub-type of assignment
+           * The idea being that, an assignment has a LHS and a RHS
+           */
+          $assignment['type'] = $assignment['assign-type'];
+          unset($assignment['assign-type']);
+          break;
+        default:
+          $assignment['type'] = 'assign';
+          $assignment['assign-to-type'] = $assignment['assign-type'];
+      }
       list($prepend, $assignment, $append) = $this->_processStatement($class, $method, $assignment);
       if (isset($prepend) && count($prepend)) {
         $before = array_merge($before, $prepend);
@@ -797,7 +840,7 @@ class InlineNormalize implements IPhase {
       'line' => $expression['line'],
       'char' => $expression['char']
     ];
-    
+
     // Add Variable to Method Locals
     $method['locals'][$v_name] = [
       'name' => $v_name,
@@ -806,7 +849,7 @@ class InlineNormalize implements IPhase {
       'line' => $expression['line'],
       'char' => $expression['char']
     ];
-      
+
     return [$v_name, $assignment];
   }
 

@@ -503,11 +503,19 @@ class EmitCode implements IStage {
     $this->_appendEOS();
   }
 
+  protected function _statementIncr($assign, $class, $method) {
+    $this->_append(["\${$assign['variable']}", '++']);
+  }
+
+  protected function _statementDecr($assign, $class, $method) {
+    $this->_append(["\${$assign['variable']}, '--"]);
+  }
+
   protected function _statementAssign($assign, $class, $method) {
     // PROCESS TO Expression
     switch ($assign['assign-to-type']) {
       case 'variable':
-        $this->_append(["\${$assign['variable']}"]);
+        $this->_append("\${$assign['variable']}");
         break;
       case 'variable-append':
         $this->_append(["\${$assign['variable']}", '[]']);
@@ -523,6 +531,18 @@ class EmitCode implements IStage {
         break;
       case 'static-property-append':
         $this->_append([$assign['variable'], '::', "\${$assign['property']}", '[]']);
+        break;
+      case 'array-index':
+        $this->_append(["\${$assign['variable']}", '[']);
+        $first = true;
+        foreach ($assign['index-expr'] as $index) {
+          if (!$first) {
+            $this->_append(',');
+          }
+          $this->_processExpression($index, $class, $method);
+          $first = false;
+        }
+        $this->_append(']');
         break;
       default:
         throw new \Exception("Unhandled Assignment Type [{$assign['assign-type']}] in line [{$assign['line']}]");
@@ -552,6 +572,96 @@ class EmitCode implements IStage {
     // PROCESS R.H.S Expression
     $this->_processExpression($assign['expr'], $class, $method);
     $this->_appendEOS();
+  }
+
+  protected function _statementFor($for, $class, $method) {
+    // TODO Handle 'reverse'
+    // TODO Handle 'anonymous variable' i.e. key, _
+    // TODO Handle range() i.e.: range(1, 10)
+    // TODO over Strings
+    // TODO from flow.zep : for _ in range(1, 10) (No Key, No Value)
+    $key = isset($for['key']) ? ($for['key'] !== '_' ? $for['key'] : null) : null;
+    $value = isset($for['value']) ? $for['value'] : null;
+    $reverse = isset($for['reverse']) ? $for['reverse'] : false;
+
+    /*
+     * HEADER
+     */
+    $this->_append(['foreach', '(']);
+    if ($reverse) {
+      throw new \Exception("TODO Implement");
+//      echo 'array_reverse(';
+    }
+    $this->_processExpression($for['expr'], $class, $method);
+    if ($reverse) {
+//      echo ')';
+    }
+    $this->_append('as');
+    if (isset($key)) {
+      $this->_append("\${$key}", '=>', "\${$value}");
+    } else {
+      $this->_append("\${$value}");
+    }
+    $this->_append(')');
+
+    // TODO: Move to the Flag to Configuration File
+    $config_forLFStartBlock = true; // method '{' on new line?
+    $this->_flush($config_forLFStartBlock);
+    $this->_append('{', true);
+
+    /* TODO 
+     * 1. Optimization, if an 'for' has no statements we should just use a ';' rather than a '{ }' pair
+     * 2. Optimization, if an 'for' has no statements, than maybe it is 'dead code' and should be removed
+     * NOTE: this requires that the test expression has no side-effects (i.e. assigning within an if, function call, etc.)
+     */
+    /*
+     * BODY
+     */
+    $this->_indent();
+
+    if (isset($for['statements'])) {
+      $this->_processStatementBlock($for['statements'], $class, $method);
+    }
+
+    // Garauntee that we flush any pending lines
+    $this->_flush();
+    $this->_unindent();
+
+    /*
+     * FOOTER
+     */
+    $this->_append('}', true);
+  }
+
+  protected function _statementWhile($while, $class, $method) {
+    /*
+     * HEADER
+     */
+    $this->_append(['while', '(']);
+    $this->_processExpression($while['expr'], $class, $method);
+    $this->_append(')');
+
+    // TODO: Move to the Flag to Configuration File
+    $config_forLFStartBlock = true; // method '{' on new line?
+    $this->_flush($config_forLFStartBlock);
+    $this->_append('{', true);
+
+    /*
+     * BODY
+     */
+    $this->_indent();
+
+    if (isset($while['statements'])) {
+      $this->_processStatementBlock($while['statements'], $class, $method);
+    }
+
+    // Garauntee that we flush any pending lines
+    $this->_flush();
+    $this->_unindent();
+    /*
+     * FOOTER
+     */
+    $this->_append('}', true);
   }
 
   protected function _emitStatementLet($ast) {
@@ -721,18 +831,6 @@ class EmitCode implements IStage {
     echo "}\n";
   }
 
-  protected function _emitStatementWhile($ast) {
-    echo "while(";
-    $expr = $ast['expr'];
-    $this->_redirectAST($expr['type'], $expr);
-    echo ") {\n";
-    $statements = isset($ast['statements']) ? $ast['statements'] : null;
-    if (isset($statements)) {
-      $this->_emitStatements($statements);
-    }
-    echo "}\n";
-  }
-
   protected function _emitStatementDoWhile($ast) {
     echo "do {\n";
     $statements = isset($ast['statements']) ? $ast['statements'] : null;
@@ -746,40 +844,32 @@ class EmitCode implements IStage {
     echo ");\n";
   }
 
-  protected function _emitStatementFor($ast) {
-    // TODO Handle 'reverse'
-    // TODO Handle 'anonymous variable' i.e. key, _
-    // TODO Handle range() i.e.: range(1, 10)
-    // TODO over Strings
-    // TODO from flow.zep : for _ in range(1, 10) (No Key, No Value)
-    $key = isset($ast['key']) ? ($ast['key'] !== '_' ? $ast['key'] : null) : null;
-    $value = isset($ast['value']) ? $ast['value'] : null;
-    $reverse = isset($ast['reverse']) ? $ast['reverse'] : false;
-    $source = $ast['expr'];
-    echo "foreach(";
-    if ($reverse) {
-      echo 'array_reverse(';
+  protected function _statementIf($if, $class = null, $method = null) {
+
+    /* IF (EXPR) */
+    $this->_statementIfExpression($if, $class, $method);
+
+    /* ELSE IF { statements } */
+    if (isset($if['elseif_statements'])) {
+      foreach ($if['elseif_statements'] as $else_if) {
+        $this->_append('else');
+        $this->_statementIfExpression($else_if, $class, $method);
+      }
     }
-    $this->_emitExpression($source);
-    if ($reverse) {
-      echo ')';
+
+    /* ELSE { statements } */
+    if (isset($if['else_statements'])) {
+      $this->_append(['else', '{'], true);
+      $this->_indent();
+
+      /* ELSE { statements } */
+      $this->_processStatementBlock($if['else_statements'], $class, $method);
+
+      // Garauntee that we flush any pending lines
+      $this->_flush();
+      $this->_unindent();
+      $this->_append('}', true);
     }
-    echo ' as ';
-    if (isset($key)) {
-      echo "\${$key} => \${$value}) {\n";
-    } else {
-      echo "\${$value}) {\n";
-    }
-    /* TODO 
-     * 1. Optimization, if an 'for' has no statements we should just use a ';' rather than a '{ }' pair
-     * 2. Optimization, if an 'for' has no statements, than maybe it is 'dead code' and should be removed
-     * NOTE: this requires that the test expression has no side-effects (i.e. assigning within an if, function call, etc.)
-     */
-    $statements = isset($ast['statements']) ? $ast['statements'] : null;
-    if (isset($statements)) {
-      $this->_emitStatements($statements);
-    }
-    echo "}\n";
   }
 
   protected function _statementIfExpression($if_expr, $class = null, $method = null) {
@@ -809,35 +899,7 @@ class EmitCode implements IStage {
     // Garauntee that we flush any pending lines
     $this->_flush();
     $this->_unindent();
-    $this->_append('}');
-  }
-
-  protected function _statementIf($if, $class = null, $method = null) {
-
-    /* IF (EXPR) */
-    $this->_statementIfExpression($if, $class, $method);
-
-    /* ELSE IF { statements } */
-    if (isset($if['elseif_statements'])) {
-      foreach ($if['elseif_statements'] as $else_if) {
-        $this->_append('else');
-        $this->_statementIfExpression($else_if, $class, $method);
-      }
-    }
-
-    /* ELSE { statements } */
-    if (isset($if['else_statements'])) {
-      $this->_append(['else', '{'], true);
-      $this->_indent();
-
-      /* ELSE { statements } */
-      $this->_processStatementBlock($if['else_statements'], $class, $method);
-
-      // Garauntee that we flush any pending lines
-      $this->_flush();
-      $this->_unindent();
-      $this->_append('}', true);
-    }
+    $this->_append('}', true);
   }
 
   protected function _emitStatementSwitch($ast) {
@@ -1196,7 +1258,7 @@ class EmitCode implements IStage {
     // Flag the Next Expression as Property Expression
     $this->_processExpression($right, $class, $method);
   }
-  
+
   protected function _expressionStaticPropertyAccess($expression, $class = null, $method = null) {
     $left = $expression['left'];
     $right = $expression['right'];
