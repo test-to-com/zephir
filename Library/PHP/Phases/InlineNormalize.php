@@ -334,7 +334,7 @@ class InlineNormalize implements IPhase {
     foreach ($let['assignments'] as $assignment) {
       switch ($assignment['assign-type']) {
         case 'incr':
-        case 'decr': 
+        case 'decr':
           /* Convert i++ and i-- to actual statements, rather than use them a sub-type of assignment
            * The idea being that, an assignment has a LHS and a RHS
            */
@@ -423,6 +423,9 @@ class InlineNormalize implements IPhase {
   }
 
   protected function _processExpression(&$class, &$method, $expression) {
+    if (!isset($expression['type'])) {
+      throw new Exception('Invalid Expression');
+    }
     $type = $expression['type'];
 
     // Do we have Specific Handler?
@@ -632,6 +635,24 @@ class InlineNormalize implements IPhase {
     }
 
     return [null, $expression, null];
+  }
+
+  protected function _expressionUnlikely(&$class, &$method, $unlikely) {
+    $before = [];
+    $after = [];
+
+    // Unlikely doesn't apply to PHP (so just remove it)
+    list($prepend, $unlikely, $append) = $this->_processExpression($class, $method, $unlikely['left']);
+    return [$before, $unlikely, $after];
+  }
+
+  protected function _expressionLikely(&$class, &$method, $likely) {
+    $before = [];
+    $after = [];
+
+    // Likely doesn't apply to PHP (so just remove it)
+    list($prepend, $likely, $append) = $this->_processExpression($class, $method, $likely['left']);
+    return [$before, $likely, $after];
   }
 
   protected function _expressionClosureArrow(&$class, &$method, $expression) {
@@ -851,6 +872,25 @@ class InlineNormalize implements IPhase {
     ];
 
     return [$v_name, $assignment];
+  }
+
+  protected function _expressionCast(&$class, &$method, $cast) {
+    $before = [];
+    $after = [];
+
+    /* in the Cast Expression, the LHS (i.e. $cast['left'] is just a string */
+
+    // Process Right Expression
+    list($prepend, $right, $append) = $this->_processExpression($class, $method, $cast['right']);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    $cast['right'] = $right;
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
+
+    return [$before, $cast, $after];
   }
 
   protected function _expressionDEFAULT(&$class, &$method, $expression) {

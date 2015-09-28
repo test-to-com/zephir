@@ -1035,22 +1035,6 @@ class EmitCode implements IStage {
     echo ')';
   }
 
-  protected function _emitLikely($ast) {
-    // TODO Use this as an Optimization Hint
-    /* THIS IS ONLY AN OPTIMIZATION HINT : Don't know if it's of any use in PHP */
-  }
-
-  protected function _emitUnlikely($ast) {
-    // TODO Use this as an Optimization Hint
-    /* THIS IS ONLY AN OPTIMIZATION HINT : Don't know if it's of any use in PHP */
-  }
-
-  protected function _emitCast($ast) {
-    /* $left = $ast['left']; : Represents Hint, which we don't choose */
-    $right = $ast['right'];
-    $this->_redirectAST($right['type'], $right);
-  }
-
   protected function _emitTypeHint($ast) {
     /* $left = $ast['left']; : Represents Hint, which we don't choose */
     $right = $ast['right'];
@@ -1277,6 +1261,11 @@ class EmitCode implements IStage {
     $this->_append('::');
     $this->_processExpression($right, $class, $method);
     $this->_property = false;
+  }
+
+  protected function _expressionCast($cast, $class, $method) {
+    $this->_append(['(', $cast['left'], ')']);
+    $this->_processExpression($cast['right'], $class, $method);
   }
 
   protected function _expressionVariable($variable, $class, $method) {
