@@ -117,7 +117,7 @@ class EmitCode implements IStage {
     }
 
     if ($this->_indent_level < 0) {
-      throw new Exception("Indentation Level CANNOT BE less than ZERO");
+      throw new \Exception("Indentation Level CANNOT BE less than ZERO");
     }
   }
 
@@ -186,7 +186,33 @@ class EmitCode implements IStage {
   }
 
   protected function _statementNamespace($namespace, $class, $method) {
-    $this->_append(['namespace', "{$namespace['name']};"], true);
+    $this->_append(['namespace', $namespace['name'], ';'], true);
+  }
+
+  protected function _statementUse($use, $class = null, $method = null) {
+    // TODO: Move to the Flag to Configuration File
+    $config_useLFEntries = true; // Seperate single use entries (seperated by comma, by linefeed)
+
+    $this->_append('use');
+    $first = true;
+    $indent = true; // Should we indent (more)?
+    foreach ($use['aliases'] as $alias) {
+      if (!$first) {
+        $this->_append(',');
+        if ($config_useLFEntries) {
+          $this->_flush();
+          $this->_indent($indent);
+          $indent = false;
+        }
+      }
+      $this->_append($alias['name']);
+      if (isset($alias['alias'])) {
+        $this->_append(['as', $alias['name']]);
+      }
+      $first = false;
+    }
+    $this->_appendEOS();
+    $this->_unindent(!$indent);
   }
 
   protected function _statementClass($class) {
@@ -309,8 +335,27 @@ class EmitCode implements IStage {
     if (isset($extends)) {
       $this->_flush($config_interfaceLFExtends);
       $this->_indent($config_interfaceLFExtends);
-      $this->_append(['extends', $extends]);
+
+      $this->_append('extends');
+      $this->_property = true;
+
+      $first = true;
+      $indent = true;
+      foreach ($extends as $extend) {
+        if (!$first) {
+          $this->_append(',');
+          $this->_flush($config_interfaceLFExtends);
+          $this->_indent($indent);
+          $indent = false;
+        }
+        $this->_processExpression($extend);
+        $first = false;
+      }
+      $this->_flush();
+      $this->_unindent(!$indent);
       $this->_unindent($config_interfaceLFExtends);
+
+      $this->_property = false;
     }
 
     // TODO: Move to the Flag to Configuration File
@@ -503,6 +548,19 @@ class EmitCode implements IStage {
     $this->_appendEOS();
   }
 
+  protected function _statementScall($call, $class, $method) {
+    /* STATEMENT Function Calls Have a Nested AST Structure, which diferentiate
+     * it from EXPRESSION Method Calls (i.e. all statements, have expressions
+     * and an expression can be used as part of statements)
+      [ 'type' => 'fcall',
+      'expr' => [
+      'type' => 'fcall'
+     */
+
+    $this->_expressionScall($call['expr'], $class, $method);
+    $this->_appendEOS();
+  }
+
   protected function _statementIncr($assign, $class, $method) {
     switch ($assign['assign-to-type']) {
       case 'variable':
@@ -632,20 +690,12 @@ class EmitCode implements IStage {
     // TODO from flow.zep : for _ in range(1, 10) (No Key, No Value)
     $key = isset($for['key']) ? ($for['key'] !== '_' ? $for['key'] : null) : null;
     $value = isset($for['value']) ? $for['value'] : null;
-    $reverse = isset($for['reverse']) ? $for['reverse'] : false;
 
     /*
      * HEADER
      */
     $this->_append(['foreach', '(']);
-    if ($reverse) {
-      throw new \Exception("TODO Implement");
-//      echo 'array_reverse(';
-    }
     $this->_processExpression($for['expr'], $class, $method);
-    if ($reverse) {
-//      echo ')';
-    }
     $this->_append('as');
     if (isset($key)) {
       $this->_append("\${$key}", '=>', "\${$value}");
@@ -712,6 +762,74 @@ class EmitCode implements IStage {
      * FOOTER
      */
     $this->_append('}', true);
+  }
+
+  protected function _statementLoop($loop, $class = null, $method = null) {
+    /*
+     * HEADER
+     */
+    $this->_append('do');
+
+    // TODO: Move to the Flag to Configuration File
+    $config_dowhileLFStartBlock = false; // method '{' on new line?
+    if ($config_dowhileLFStartBlock) {
+      $this->_flush();
+    }
+    $this->_append('{', true);
+
+    /*
+     * BODY
+     */
+    $this->_indent();
+
+    if (isset($loop['statements'])) {
+      $this->_processStatementBlock($loop['statements'], $class, $method);
+    }
+
+    // Garauntee that we flush any pending lines
+    $this->_flush();
+    $this->_unindent();
+
+    /*
+     * FOOTER
+     */
+    $this->_append(['}', 'while', '(', 'true', ')']);
+    $this->_appendEOS();
+  }
+
+  protected function _statementDoWhile($dowhile, $class = null, $method = null) {
+    /*
+     * HEADER
+     */
+    $this->_append('do');
+
+    // TODO: Move to the Flag to Configuration File
+    $config_dowhileLFStartBlock = false; // method '{' on new line?
+    if ($config_dowhileLFStartBlock) {
+      $this->_flush();
+    }
+    $this->_append('{', true);
+
+    /*
+     * BODY
+     */
+    $this->_indent();
+
+    if (isset($dowhile['statements'])) {
+      $this->_processStatementBlock($dowhile['statements'], $class, $method);
+    }
+
+    // Garauntee that we flush any pending lines
+    $this->_flush();
+    $this->_unindent();
+
+    /*
+     * FOOTER
+     */
+    $this->_append(['}', 'while', '(']);
+    $this->_processExpression($dowhile['expr'], $class, $method);
+    $this->_append(')');
+    $this->_appendEOS();
   }
 
   protected function _emitStatementLet($ast) {
@@ -872,30 +990,7 @@ class EmitCode implements IStage {
     }
   }
 
-  protected function _emitStatementLoop($ast) {
-    echo "while(true) {\n";
-    $statements = isset($ast['statements']) ? $ast['statements'] : null;
-    if (isset($statements)) {
-      $this->_emitStatements($statements);
-    }
-    echo "}\n";
-  }
-
-  protected function _emitStatementDoWhile($ast) {
-    echo "do {\n";
-    $statements = isset($ast['statements']) ? $ast['statements'] : null;
-    if (isset($statements)) {
-      $this->_emitStatements($statements);
-    }
-    echo "} while (";
-    // TODO If expr === 'list' don't place a leading '(' and trailing '(' as the list will add those
-    $expr = $ast['expr'];
-    $this->_redirectAST($expr['type'], $expr);
-    echo ");\n";
-  }
-
   protected function _statementIf($if, $class = null, $method = null) {
-
     /* IF (EXPR) */
     $this->_statementIfExpression($if, $class, $method);
 
@@ -935,7 +1030,7 @@ class EmitCode implements IStage {
     $this->_unindent($config_ifLFExpressions);
     $this->_append(')');
 
-    $config_ifLFStartBlock = true; // method '{' on new line?
+    $config_ifLFStartBlock = true; // '{' on new line?
     $this->_flush($config_ifLFStartBlock);
     $this->_append('{', true);
 
@@ -952,48 +1047,123 @@ class EmitCode implements IStage {
     $this->_append('}', true);
   }
 
-  protected function _emitStatementSwitch($ast) {
-    echo "switch(";
-    $expr = $ast['expr'];
-    $this->_redirectAST($expr['type'], $expr);
-    echo ") {\n";
+  protected function _statementSwitch($switch, $class = null, $method = null) {
+    // HEADER
+    $this->_append(['switch', '(']);
+    // TODO: Move to the Flag to Configuration File
+    $config_switchLFExpressions = true; // Function Parameters on new line?
+    $this->_flush($config_switchLFExpressions);
+    $this->_indent($config_switchLFExpressions);
 
+    $this->_processExpression($switch['expr'], $class, $method);
+
+    $this->_flush($config_switchLFExpressions);
+    $this->_unindent($config_switchLFExpressions);
+    $this->_append(')');
+
+    $config_switchLFStartBlock = true; // '{' on new line?
+    $this->_flush($config_switchLFStartBlock);
+    $this->_append('{', true);
+    $this->_indent();
+
+    // BODY : SWITCH CLAUSES
     /* TODO 
      * 1. Optimization, if an 'switch' has no clauses we should just use a ';' rather than a '{ }' pair
      * 2. Optimization, if an 'switch' has no clauses, than maybe it is 'dead code' and should be removed
      * NOTE: this requires that the test expression has no side-effects (i.e. assigning within an if, function call, etc.)
      */
-    $clauses = isset($ast['clauses']) ? $ast['clauses'] : null;
-    if (isset($clauses)) {
-      $this->_emitClauses($clauses);
+    if (isset($switch['clauses'])) {
+      foreach ($switch['clauses'] as $clause) {
+        switch ($clause['type']) {
+          case 'case':
+            $this->_append('case');
+            $this->_processExpression($clause['expr'], $class, $method);
+            $this->_append(':', true);
+            break;
+          case 'default':
+            $this->_append(['default', ':'], true);
+            break;
+          default:
+            throw new \Exception("Unexpected SWITCH Clause Type [{$clause['type']}] in line [{$assign['line']}]");
+        }
+
+        // Do we have statements for the clause?
+        if (isset($clause['statements']) && count($clause['statements'])) { // YES : Process
+          $this->_indent();
+          $this->_processStatementBlock($clause['statements'], $class, $method);
+          $this->_unindent();
+        }
+      }
     }
 
-    echo "}\n";
+    // FOOTER
+    $this->_flush();
+    $this->_unindent();
+    $this->_append('}', true);
   }
 
-  protected function _emitClauses($astclauses) {
-    // TODO : Handle Scenario when 'default' is not the last clause (should be error)
-    foreach ($astclauses as $astclause) {
-      $this->_redirectAST($astclause['type'], $astclause, 'clause');
+  protected function _statementTryCatch($trycatch, $class = null, $method = null) {
+    // BODY : CATCH CLAUSES
+    /* TODO 
+     * 1. Optimization, if an 'try' has no clauses we should just use a ';' rather than a '{ }' pair
+     * 2. Optimization, if an 'try' has no clauses, than maybe it is 'dead code' and should be removed
+     * NOTE: this requires that the test expression has no side-effects (i.e. assigning within an if, function call, etc.)
+     */
+    /* TRY HEADER */
+    $this->_append('try');
+
+    // TODO: Move to the Flag to Configuration File
+    $config_tryLFStartBlock = false; // method '{' on new line?
+    if ($config_tryLFStartBlock) {
+      $this->_flush();
     }
-  }
+    $this->_append('{', true);
 
-  protected function _emitClauseCase($ast) {
-    echo "case ";
-    $expr = $ast['expr'];
-    $this->_redirectAST($expr['type'], $expr);
-    echo ":\n";
-    $statements = isset($ast['statements']) ? $ast['statements'] : null;
-    if (isset($statements)) {
-      $this->_emitStatements($statements);
-    }
-  }
+    /* TRY BODY */
+    $this->_indent();
+    $this->_processStatementBlock($trycatch['statements'], $class, $method);
 
-  protected function _emitClauseDefault($ast) {
-    echo "default:\n";
-    $statements = isset($ast['statements']) ? $ast['statements'] : null;
-    if (isset($statements)) {
-      $this->_emitStatements($statements);
+    // Garauntee that we flush any pending lines
+    $this->_flush();
+    $this->_unindent();
+
+    /*
+     * TRY FOOTER
+     */
+    $this->_append('}');
+
+    // BODY : CATCH CLAUSES
+    /* TODO 
+     * 1. Optimization, if an 'catch' has no clauses we should just use a ';' rather than a '{ }' pair
+     * 2. Optimization, if an 'catch' has no clauses, than maybe it is 'dead code' and should be removed
+     * NOTE: this requires that the test expression has no side-effects (i.e. assigning within an if, function call, etc.)
+     */
+    foreach ($trycatch['catches'] as $catch) {
+      /* CATCH HEADER */
+      $this->_append(['catch', '(']);
+      $this->_property = true;
+      $this->_processExpression($catch['class'], $class, $method);
+      $this->_property = false;
+      $this->_processExpression($catch['variable'], $class, $method);
+      $this->_append(')', true);
+
+      // TODO: Move to the Flag to Configuration File
+      $config_tryLFStartBlock = false; // method '{' on new line?
+      if ($config_tryLFStartBlock) {
+        $this->_flush();
+      }
+      $this->_append('{', true);
+
+      /* CATCH BODY */
+      $this->_indent();
+      $this->_processStatementBlock($catch['statements'], $class, $method);
+
+      // Garauntee that we flush any pending lines
+      $this->_flush();
+      $this->_unindent();
+
+      /* TRY FOOTER */
+      $this->_append('}', true);
     }
   }
 
@@ -1060,12 +1230,6 @@ class EmitCode implements IStage {
     throw new \Exception('TODO');
   }
 
-  protected function _emitNot($ast) {
-    $left = $ast['left'];
-    echo '!';
-    $this->_redirectAST($left['type'], $left);
-  }
-
   protected function _emitRequire($ast) {
     /* TODO
      * Zephir isset does more than the normal php isset
@@ -1073,57 +1237,6 @@ class EmitCode implements IStage {
     $left = $ast['left'];
     echo 'require ';
     $this->_redirectAST($left['type'], $left);
-  }
-
-  protected function _emitEmpty($ast) {
-    /* TODO
-     * Implement Zephir Empty
-     */
-    $left = $ast['left'];
-    echo 'zephir_isempty(';
-    $this->_redirectAST($left['type'], $left);
-    echo ')';
-  }
-
-  protected function _emitTypeHint($ast) {
-    /* $left = $ast['left']; : Represents Hint, which we don't choose */
-    $right = $ast['right'];
-    $this->_redirectAST($right['type'], $right);
-  }
-
-  protected function _emitPropertyAccess($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_emitVariable($left);
-    echo '->';
-    $this->_emitVariable($right, true);
-  }
-
-  protected function _emitPropertyDynamicAccess($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    $this->_emitVariable($left, true);
-    echo '->';
-    $this->_emitVariable($right);
-  }
-
-  protected function _emitPropertyStringAccess($ast) {
-    $left = $ast['left'];
-    $right = $ast['right'];
-
-    echo 'zephir_read_property(';
-    $this->_emitVariable($left);
-    echo ', \'';
-    switch ($right['type']) {
-      case 'string':
-        echo $right['value'];
-        break;
-      default:
-        throw new \Exception("TODO - 1 - _emitPropertyStringAccess");
-    }
-    echo '\')';
   }
 
   /**
@@ -1245,8 +1358,18 @@ class EmitCode implements IStage {
         $this->_processExpression($left['right'], $class, $method);
         $this->_append(')');
         break;
+      case 'static-property-access':
+        // TODO Verify if this is what zephir does for static access
+        $this->_append(['isset', '(']);
+        $this->_property = true;
+        $this->_processExpression($left['left'], $class, $method);
+        $this->_property = false;
+        $this->_append('::');
+        $this->_processExpression($left['right'], $class, $method);
+        $this->_append(')');
+        break;
       default:
-        throw new \Exception("TODO - 2 - isset([{$type}])");
+        throw new \Exception("TODO - 2 - isset([{$type}]) in line [{$isset['line']}]");
     }
   }
 

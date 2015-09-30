@@ -100,6 +100,7 @@ class Compiler implements ICompiler {
           $count_path = strlen($path);
           $extension = $count_path > 4 ? strtolower(substr($path, $count_path - 4)) : null;
           if (isset($extension) && ($extension === '.zep')) {
+            echo "** FILE [{$path}] **\n";
             $compiler->file($path);
           }
           return true;

@@ -39,77 +39,77 @@ class InlineNormalize implements IPhase {
 
   protected $sudo_methods = [
     'array' => [
-      'join', // 'implode'
-      'reversed', // 'array_reverse'
-      'rev', //  'array_reverse'
-      'diff', // 'array_diff'
-      'flip', // 'array_flip'
-      'fill', // 'array_fill'
-      'walk', // 'array_walk'
-      'haskey', // 'array_key_exists'
-      'keys', // 'array_keys'
-      'values', // 'array_values'
-      'split', // 'array_chunk'
       'combine', // 'array_combine'
-      'intersect', // 'array_intersect'
-      'merge', // 'array_merge'
-      'mergerecursive', // 'array_merge_recursive'
-      'pad', // 'array_pad'
-      'pop', // 'array_pop'
-      'push', // 'array_push'
-      'rand', // 'array_rand'
-      'replace', // 'array_replace'
-      'map', // 'array_map'
-      'replacerecursive', // 'array_replace_recursive'
-      'shift', // 'array_shift'
-      'slice', // 'array_slice'
-      'splice', // 'array_splice'
-      'sum', // 'array_sum'
-      'unique', // 'array_unique'
-      'prepend', // 'array_unshift'
       'count', // 'count'
       'current', // 'current'
+      'diff', // 'array_diff'
       'each', // 'each'
       'end', // 'end'
+      'fill', // 'array_fill'
+      'flip', // 'array_flip'
+      'haskey', // 'array_key_exists'
+      'intersect', // 'array_intersect'
+      'join', // 'implode'
       'key', // 'key'
+      'keys', // 'array_keys'
+      'map', // 'array_map'
+      'merge', // 'array_merge'
+      'mergerecursive', // 'array_merge_recursive'
       'next', // 'next'
+      'pad', // 'array_pad'
+      'pop', // 'array_pop'
+      'prepend', // 'array_unshift'
       'prev', // 'prev'
+      'push', // 'array_push'
+      'rand', // 'array_rand'
+      'reduce', // array_reduce
+      'replace', // 'array_replace'
+      'replacerecursive', // 'array_replace_recursive'
       'reset', // 'reset'
-      'sort', // 'sort'
-      'sortbykey', // 'ksort'
+      'rev', //  'array_reverse'
+      'reversed', // 'array_reverse'
       'reversesort', // 'rsort'
       'reversesortbykey', // 'krsort'
+      'shift', // 'array_shift'
       'shuffle', // 'shuffle'
+      'slice', // 'array_slice'
+      'sort', // 'sort'
+      'sortbykey', // 'ksort'
+      'splice', // 'array_splice'
+      'split', // 'array_chunk'
+      'sum', // 'array_sum'
       'tojson', // 'json_encode'
-      'reduce' // array_reduce
+      'unique', // 'array_unique'
+      'values', // 'array_values'
+      'walk' // 'array_walk'
     ],
     'string' => [
+      'camelize', // 'camelize'
+      'compare', // 'strcmp'
+      'compareLocale', // 'strcoll'
+      'format', // 'sprintf'
+      'htmlSpecialChars', // 'htmlspecialchars'
       'index', // 'strpos'
-      'trim', // 'trim'
-      'trimleft', // 'ltrim'
-      'trimright', // 'rtrim'
       'length', // 'strlen'
       'lower', // 'strtolower'
-      'upper', // 'strtoupper'
-      'lowerfirst', // 'lcfirst'
-      'upperfirst', // 'ucfirst'
-      'format', // 'sprintf'
+      'lowerFirst', // 'lcfirst'
       'md5', // 'md5'
-      'sha1', // 'sha1'
       'nl2br', // 'nl2br'
-      'parsecsv', // 'str_getcsv'
-      'parsejson', // 'json_decode'
-      'tojson', // 'json_encode'
-      'toutf8', // 'utf8_encode'
+      'parseCsv', // 'str_getcsv'
+      'parseJson', // 'json_decode'
       'repeat', // 'str_repeat'
+      'rev', // 'strrev'
+      'sha1', // 'sha1'
       'shuffle', // 'str_shuffle'
       'split', // 'str_split'
-      'compare', // 'strcmp'
-      'comparelocale', // 'strcoll'
-      'rev', // 'strrev'
-      'htmlspecialchars', // 'htmlspecialchars'
-      'camelize', // 'camelize'
-      'uncamelize' // 'uncamelize'
+      'toJson', // 'json_encode'
+      'toutf8', // 'utf8_encode'
+      'trim', // 'trim'
+      'trimLeft', // 'ltrim'
+      'trimRight', // 'rtrim'
+      'uncamelize', // 'uncamelize'
+      'upper', // 'strtoupper'
+      'upperFirst' // 'ucfirst'
     ]
   ];
 
@@ -205,32 +205,54 @@ class InlineNormalize implements IPhase {
     }
   }
 
-  protected function _statementLoop(&$class, &$method, $statement) {
-    throw new \Exception("TODO Implement");
+  protected function _statementLoop(&$class, &$method, $loop) {
+    $before = [];
+    $after = [];
+
+    /* LOOP (STATEMENTS) */
+    $loop['statements'] = $this->_processStatementBlock($class, $loop, $loop['statements']);
+
+    return [$before, $loop, $after];
   }
 
-  protected function _statementDoWhile(&$class, &$method, $statement) {
-    throw new \Exception("TODO Implement");
+  protected function _statementDoWhile(&$class, &$method, $dowhile) {
+    $before = [];
+    $after = [];
+
+    /* DO-WHILE (STATEMENTS) */
+    $dowhile['statements'] = $this->_processStatementBlock($class, $method, $dowhile['statements']);
+
+    /* DO-WHILE (EXPR) */
+    list($prepend, $expression, $append) = $this->_processExpression($class, $method, $dowhile['expr']);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    $dowhile['expr'] = $expression;
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
+
+    return [$before, $dowhile, $after];
   }
 
-  protected function _statementWhile(&$class, &$method, $statement) {
+  protected function _statementWhile(&$class, &$method, $while) {
     $before = [];
     $after = [];
 
     /* WHILE (EXPR) */
-    list($prepend, $expression, $append) = $this->_processExpression($class, $method, $statement['expr']);
+    list($prepend, $expression, $append) = $this->_processExpression($class, $method, $while['expr']);
     if (isset($prepend) && count($prepend)) {
       $before = array_merge($before, $prepend);
     }
-    $statement['expr'] = $expression;
+    $while['expr'] = $expression;
     if (isset($append) && count($append)) {
       $after = array_merge($after, $append);
     }
 
     /* WHILE (STATEMENTS) */
-    $statement['statements'] = $this->_processStatementBlock($class, $method, $statement['statements']);
+    $while['statements'] = $this->_processStatementBlock($class, $method, $while['statements']);
 
-    return [$before, $statement, $after];
+    return [$before, $while, $after];
   }
 
   protected function _statementFor(&$class, &$method, $statement) {
@@ -242,10 +264,27 @@ class InlineNormalize implements IPhase {
     if (isset($prepend) && count($prepend)) {
       $before = array_merge($before, $prepend);
     }
-    $statement['expr'] = $expression;
     if (isset($append) && count($append)) {
       $after = array_merge($after, $append);
     }
+
+    if (isset($statement['reverse']) && $statement['reverse']) {
+      /* TODO: Is it possible in zephir to do a foreach over a string?
+       * If so, then we have to handle the case in which the expression is a
+       * string and use strrev() instead of array_reverse
+       */
+      $expression = [
+        'type' => 'fcall',
+        'name' => 'array_reverse',
+        'call-type' => 1,
+        'parameters' => [$expression],
+        'file' => $expression['file'],
+        'line' => $expression['line'],
+        'char' => $expression['char']
+      ];
+      unset($statement['reverse']);
+    }
+    $statement['expr'] = $expression;
 
     /* FOR (STATEMENTS) */
     $statement['statements'] = $this->_processStatementBlock($class, $method, $statement['statements']);
@@ -322,8 +361,106 @@ class InlineNormalize implements IPhase {
     return [$before, $statement, $after];
   }
 
-  protected function _statementSwitch(&$class, &$method, $statement) {
-    throw new \Exception("TODO Implement");
+  protected function _statementSwitch(&$class, &$method, $switch) {
+    $before = [];
+    $after = [];
+    $assignments = [];
+
+    /* SWITCH (EXPR) */
+    list($prepend, $expression, $append) = $this->_processExpression($class, $method, $switch['expr']);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    $switch['expr'] = $expression;
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
+
+    /* SWITCH (CLAUSES) */
+    if (isset($switch['clauses'])) {
+      foreach ($switch['clauses'] as &$clause) {
+        $clause['statements'] = $this->_processStatementBlock($class, $method, $clause['statements']);
+      }
+    } else {
+      $switch['clauses'] = [];
+    }
+
+    return [$before, $switch, $after];
+  }
+
+  protected function _statementTryCatch(&$class, &$method, $trycatch) {
+    $before = [];
+    $after = [];
+    $assignments = [];
+
+    /* TRY { } */
+    if (isset($trycatch['statements'])) {
+      $trycatch['statements'] = $this->_processStatementBlock($class, $method, $trycatch['statements']);
+    } else {
+      $trycatch['statements'] = [];
+    }
+
+    /* CATCH (CLAUSES) */
+    if (isset($trycatch['catches'])) {
+      $catches = [];
+      foreach ($trycatch['catches'] as $catch) {
+        // Cleanup Catch Statements
+        $statements = isset($catch['statements']) ? $this->_processStatementBlock($class, $method, $catch['statements']) : [];
+
+        //Do we already have a catch variable?
+        if (isset($catch['variable'])) { // YES: Save it as Method Local
+          $variable = $catch['variable'];
+          $this->_addLocalVariable($class, $method, $variable);
+          $tv_name = $variable['value'];
+        } else { // NO: Create a New Method Local Variable
+          $tv_name = $this->_newLocalVariable($class, $method, 'variable', $catch['file'], $catch['line'], $catch['char']);
+        }
+
+        // Decouple Multiple Classes into Single Class Catch Clause
+        foreach ($catch['classes'] as $catch_class) {
+          $new_catch = [
+              'class' => $catch_class,
+              'variable' =>
+              [
+                'type' => 'variable',
+                'value' => $tv_name,
+                'file' => $catch['file'],
+                'line' => $catch['line'],
+                'char' => $catch['char'],
+              ],
+              'statements' => $statements
+          ];
+
+          $catches[] = $new_catch;
+        }
+      }
+
+      $trycatch['catches'] = $catches;
+    } else { // NO: Create an Empty Catch Statement
+      $tv_name = $this->_newLocalVariable($class, $method, 'variable', $trycatch['file'], $trycatch['line'], $trycatch['char']);
+      $trycatch['catches'] = [
+        [
+          'class' => [
+            'type' => 'variable',
+            'value' => '\Exception',
+            'file' => $trycatch['file'],
+            'line' => $trycatch['line'],
+            'char' => $trycatch['char'],
+          ],
+          'variable' =>
+          [
+            'type' => 'variable',
+            'value' => $tv_name,
+            'file' => $trycatch['file'],
+            'line' => $trycatch['line'],
+            'char' => $trycatch['char'],
+          ],
+          'statements' => []
+        ]
+      ];
+    }
+
+    return [$before, $trycatch, $after];
   }
 
   protected function _statementLet(&$class, &$method, $let) {
@@ -554,6 +691,8 @@ class InlineNormalize implements IPhase {
 
     switch ($variable['type']) {
       case 'array':
+        $sudoobject = 'array';
+        break;
       case 'string':
         $sudoobject = 'string';
         break;
@@ -564,6 +703,7 @@ class InlineNormalize implements IPhase {
             switch ($definition['data-type']) {
               case 'array':
                 $sudoobject = 'array';
+                break;
               case 'string':
                 $sudoobject = 'string';
                 break;
@@ -648,6 +788,22 @@ class InlineNormalize implements IPhase {
     return [null, $expression, null];
   }
 
+  protected function _expressionTypeHint(&$class, &$method, $typehint) {
+    $before = [];
+    $after = [];
+
+    /* TODO Use Type Hints. How?
+     * 1. As the expected return type of the expression (associate the type with the expression
+     * so that it get perculated up the expression tree). This would allow the compiler
+     * to do further type checking AND sudo-object method expansion.
+     * 2. For debug purposes, we could add asserts to verify that the returned
+     * value is actually of the type expected...
+     */
+    // Unlikely doesn't apply to PHP (so just remove it)
+    list($prepend, $typehint, $append) = $this->_processExpression($class, $method, $typehint['right']);
+    return [$before, $typehint, $after];
+  }
+
   protected function _expressionUnlikely(&$class, &$method, $unlikely) {
     $before = [];
     $after = [];
@@ -715,6 +871,47 @@ class InlineNormalize implements IPhase {
     ];
 
     return [null, $expression, null];
+  }
+
+  protected function _expressionEmpty(&$class, &$method, $empty) {
+    $before = [];
+    $after = [];
+
+    /* EMPTY (EXPR) */
+    list($prepend, $expression, $append) = $this->_processExpression($class, $method, $empty['left']);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
+
+    // Convert empty(...) to a built-in function call
+    $function = [
+      'type' => 'fcall',
+      'name' => 'zephir_isempty',
+      'call-type' => 1,
+      'parameters' => [$expression],
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+    return [$before, $function, $after];
+  }
+
+  protected function _expressionList(&$class, &$method, $list) {
+    $before = [];
+    $after = [];
+
+    // Compact List Expression
+    $left = $list['left'];
+    if (isset($left['type'])) {
+      list($prepend, $list, $append) = $this->_processExpression($class, $method, $left);
+    } else {
+      throw new \Exception("Unexpected List Expression in line [{$assign['line']}]");
+    }
+
+    return [$before, $list, $after];
   }
 
   protected function _expressionIrange(&$class, &$method, $irange) {
@@ -823,8 +1020,10 @@ class InlineNormalize implements IPhase {
     $after = [];
 
     // Step 1: Create Local Variable and Assignment Statement
-    list($tv_name, $tv_statement) = $this->_newLocalVariable($class, $method, $expression['right']);
-    $before[] = $tv_statement;
+    $right = $expression['right'];
+    $tv_name = $this->_newLocalVariable($class, $method, $right['type'], $right['file'], $right['line'], $right['char']);
+    $tv_assignment = $this->_newAssignment($class, $method, $tv_name, $right);
+    $before[] = $tv_assignment;
 
     // Step 2: Convert Property String Access to Property Dynamic Access
     $expression['type'] = 'property-dynamic-access';
@@ -839,14 +1038,32 @@ class InlineNormalize implements IPhase {
     return [$before, $expression, $after];
   }
 
-  protected function _newLocalVariable(&$class, &$method, $expression) {
+  protected function _newLocalVariable(&$class, &$method, $datatype, $file, $line, $char) {
     // Can we handle the Variable Type
-    switch ($expression['type']) {
+    switch ($datatype) {
+      case 'array':
+        $v_prefix = '__t_a_';
+        break;
+      case 'bool':
+        $v_prefix = '__t_b_';
+        break;
+      case 'double':
+        $v_prefix = '__t_d_';
+        break;
+      case 'int':
+        $v_prefix = '__t_i_';
+        break;
+      case 'char':
+        $v_prefix = '__t_c_';
+        break;
       case 'string':
         $v_prefix = '__t_s_';
         break;
+      case 'variable':
+        $v_prefix = '__t_v_';
+        break;
       default:
-        throw new \Exception("Can't Create Local Variable of type [{$expression['type']}] in line [{$expression['line']}].");
+        throw new \Exception("Can't Create Local Variable of type [{$datatype}] in line [{$line}].");
     }
 
     // Find a Valid Local Variable Name
@@ -860,6 +1077,26 @@ class InlineNormalize implements IPhase {
       $i++;
     } while (true);
 
+    // Add Variable to Method Locals
+    $this->_addLocalVariable($class, $method, [
+      'value' => $v_name,
+      'type' => $datatype,
+      'file' => $file,
+      'line' => $line,
+      'char' => $char
+    ]);
+
+    return $v_name;
+  }
+
+  protected function _addLocalVariable(&$class, &$method, $variable) {
+    $v_name = $variable['value'];
+
+    // Add Variable to Method Locals
+    $method['locals'][$v_name] = $variable;
+  }
+
+  protected function _newAssignment($class, $method, $v_name, $expression) {
     // Create Assignment Statement
     $assignment = [
       'type' => 'assign',
@@ -873,16 +1110,7 @@ class InlineNormalize implements IPhase {
       'char' => $expression['char']
     ];
 
-    // Add Variable to Method Locals
-    $method['locals'][$v_name] = [
-      'name' => $v_name,
-      'data-type' => $expression['type'],
-      'file' => $expression['file'],
-      'line' => $expression['line'],
-      'char' => $expression['char']
-    ];
-
-    return [$v_name, $assignment];
+    return $assignment;
   }
 
   protected function _expressionCast(&$class, &$method, $cast) {
@@ -1026,6 +1254,577 @@ class InlineNormalize implements IPhase {
     return [null, $function, null];
   }
 
+  protected function _expandStringCompare(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    if (count($join_parameters) === 1) {
+      $parameters = ['parameter' => $variable, $join_parameters[0]];
+    } else {
+      throw new \Exception("String compare() requires 1 parameter");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'strcmp',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringCompareLocale(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    if (count($join_parameters) === 1) {
+      $parameters = ['parameter' => $variable, $join_parameters[0]];
+    } else {
+      throw new \Exception("String compareLocale() requires 1 parameter");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'strcoll',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringFormat(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    if (count($join_parameters) === 0) {
+      $parameters = ['parameter' => $variable];
+    } else {
+      $parameters = array_merge(['parameter' => $variable], $join_parameters);
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'sprintf',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringHtmlSpecialChars(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    switch (count($join_parameters)) {
+      case 0: // $glue not set (using default)
+        $parameters = ['parameter' => $variable];
+        break;
+      case 1:
+      case 2:
+      case 3:
+        $parameters = array_merge(['parameter' => $variable], $join_parameters);
+        break;
+      default:
+        throw new \Exception("String htmlSpecialChars() can't have more than 3 parameters");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'htmlspecialchars',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringIndex(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    switch (count($join_parameters)) {
+      case 1:
+      case 2:
+        $parameters = array_merge(['parameter' => $variable], $join_parameters);
+        break;
+      default:
+        throw new \Exception("String index() requires between 1 and 2 parameters");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'strpos',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringLength(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    if (count($join_parameters) === 0) {
+      $parameters = ['parameter' => $variable];
+    } else {
+      throw new \Exception("String length() requires no parameters");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'strlen',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringLower(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    if (count($join_parameters) === 0) {
+      $parameters = ['parameter' => $variable];
+    } else {
+      throw new \Exception("String lower() requires no parameters");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'strtolower',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringLowerFirst(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    if (count($join_parameters) === 0) {
+      $parameters = ['parameter' => $variable];
+    } else {
+      throw new \Exception("String lower() requires no parameters");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'lcfirst',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringMd5(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    switch (count($join_parameters)) {
+      case 0: // $glue not set (using default)
+        $parameters = ['parameter' => $variable];
+        break;
+      case 1:
+        $parameters = array_merge(['parameter' => $variable], $join_parameters);
+        break;
+      default:
+        throw new \Exception("String md5() requires 0 or 1 parameter");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'md5',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringNl2br(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    switch (count($join_parameters)) {
+      case 0: // $glue not set (using default)
+        $parameters = ['parameter' => $variable];
+        break;
+      case 1:
+        $parameters = array_merge(['parameter' => $variable], $join_parameters);
+        break;
+      default:
+        throw new \Exception("String nl2br() requires 0 or 1 parameter");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'nl2br',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringParseCsv(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    switch (count($join_parameters)) {
+      case 0: // $glue not set (using default)
+        $parameters = ['parameter' => $variable];
+        break;
+      case 1:
+      case 2:
+      case 3:
+        $parameters = array_merge(['parameter' => $variable], $join_parameters);
+        break;
+      default:
+        throw new \Exception("String parseCsv() can't have more than 3 parameters");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'str_getcsv',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringParseJson(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    switch (count($join_parameters)) {
+      case 0: // $glue not set (using default)
+        $parameters = ['parameter' => $variable];
+        break;
+      case 1:
+      case 2:
+      case 3:
+        $parameters = array_merge(['parameter' => $variable], $join_parameters);
+        break;
+      default:
+        throw new \Exception("String parseJson() can't have more than 3 parameters");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'json_decode',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringRepeat(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    if (count($join_parameters) === 1) {
+      $parameters = ['parameter' => $variable, $join_parameters[0]];
+    } else {
+      throw new \Exception("String repeat() requires 1 parameter");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'str_repeat',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringRev(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    if (count($join_parameters) === 0) {
+      $parameters = ['parameter' => $variable];
+    } else {
+      throw new \Exception("String rev() requires no parameters");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'strrev',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringSha1(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    switch (count($join_parameters)) {
+      case 0: // $glue not set (using default)
+        $parameters = ['parameter' => $variable];
+        break;
+      case 1:
+        $parameters = array_merge(['parameter' => $variable], $join_parameters);
+        break;
+      default:
+        throw new \Exception("String sha1() requires 0 or 1 parameter");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'sha1',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringShuffle(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    if (count($join_parameters) === 0) {
+      $parameters = ['parameter' => $variable];
+    } else {
+      throw new \Exception("String shuffle() requires no parameters");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'str_shuffle',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringSplit(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    switch (count($join_parameters)) {
+      case 0: // $glue not set (using default)
+        $parameters = ['parameter' => $variable];
+        break;
+      case 1:
+        $parameters = array_merge(['parameter' => $variable], $join_parameters);
+        break;
+      default:
+        throw new \Exception("String md5() requires 0 or 1 parameter");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'str_split',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringToJson(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    switch (count($join_parameters)) {
+      case 0: // $glue not set (using default)
+        $parameters = ['parameter' => $variable];
+        break;
+      case 1:
+      case 2:
+        $parameters = array_merge(['parameter' => $variable], $join_parameters);
+        break;
+      default:
+        throw new \Exception("String toJson() can't have more than 2 parameters");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'json_encode',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringTrim(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    switch (count($join_parameters)) {
+      case 0: // $glue not set (using default)
+        $parameters = ['parameter' => $variable];
+        break;
+      case 1:
+        $parameters = array_merge(['parameter' => $variable], $join_parameters);
+        break;
+      default:
+        throw new \Exception("String trim() requires 0 or 1 parameter");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'trim',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringTrimLeft(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    switch (count($join_parameters)) {
+      case 0: // $glue not set (using default)
+        $parameters = ['parameter' => $variable];
+        break;
+      case 1:
+        $parameters = array_merge(['parameter' => $variable], $join_parameters);
+        break;
+      default:
+        throw new \Exception("String trimLeft() requires 0 or 1 parameter");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'ltrim',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringTrimRight(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    switch (count($join_parameters)) {
+      case 0: // $glue not set (using default)
+        $parameters = ['parameter' => $variable];
+        break;
+      case 1:
+        $parameters = array_merge(['parameter' => $variable], $join_parameters);
+        break;
+      default:
+        throw new \Exception("String trimRight() requires 0 or 1 parameter");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'rtrim',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringUpper(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    if (count($join_parameters) === 0) {
+      $parameters = ['parameter' => $variable];
+    } else {
+      throw new \Exception("String upper() requires no parameters");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'strtoupper',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandStringUpperFirst(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    if (count($join_parameters) === 0) {
+      $parameters = ['parameter' => $variable];
+    } else {
+      throw new \Exception("String upper() requires no parameters");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'ucfirst',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
   protected function _isValidSudoObjectFunction($otype, $fname) {
     if (isset($this->sudo_methods[$otype])) {
       return in_array($fname, $this->sudo_methods[$otype]);
@@ -1055,6 +1854,32 @@ class InlineNormalize implements IPhase {
       }
      */
 
+    $value = null;
+    switch ($variable['type']) {
+      case 'variable':
+        $name = $variable['value'];
+        $value = $this->_lookupMethodLocals($method, $name);
+        if (!isset($value)) {
+          $value = $this->_lookupMethodParameters($method, $name);
+        }
+        break;
+      default:
+        throw new \Exception("Unhandled type [{$variable['type']}] in lookup");
+    }
+
+    return $value;
+  }
+
+  protected function _lookupMethodLocals($method, $name) {
+    return isset($method['locals'][$name]) ? $method['locals'][$name] : null;
+  }
+
+  protected function _lookupMethodParameters($method, $name) {
+    foreach ($method['parameters'] as $parameter) {
+      if ($parameter['name'] === $name) {
+        return $parameter;
+      }
+    }
     return null;
   }
 
