@@ -54,6 +54,10 @@ class Compact implements IStage {
     foreach ($ast as $index => $entry) {
 
       switch ($entry['type']) {
+        case 'cblock':
+          // TODO: Warn of the Presence of CBLOCKS (for C extension use only)
+          $entry = null;
+          break;
         case 'class':
           $entry = $this->_compactClass($entry);
           break;
@@ -277,13 +281,15 @@ class Compact implements IStage {
 
       // For Complex Statements (i.e. statements with statement blocks)
       switch ($statement['type']) {
+        case 'cblock':
+          // TODO: Warn of the Presence of CBLOCKS (for C extension use only)
+          $statement = null;
+          break;
         case 'for':
         case 'loop':
         case 'while':
-        case 'doWhile':
-          if (isset($statement['statements'])) {
-            $statement['statements'] = $this->_compactStatementBlock($method, $statement['statements']);
-          }
+        case 'do-while':
+          $statement['statements'] = isset($statement['statements']) ? $this->_compactStatementBlock($method, $statement['statements']) : [];
           /* TODO Handle Trailing comments 
            * i.e. comments that come after all the statements in a block.
            * 
@@ -321,7 +327,7 @@ class Compact implements IStage {
           if (isset($statement['clauses'])) {
             $clauses = [];
             foreach ($statement['clauses'] as $clause) {
-              $clause['statements'] = $this->_compactStatementBlock($method, $clause['statements']);
+              $clause['statements'] = isset($clause['clauses']) ? $this->_compactStatementBlock($method, $clause['statements']) : [];
               $clauses[] = $clause;
             }
             $statement['clauses'] = $clauses;
@@ -330,7 +336,9 @@ class Compact implements IStage {
       }
 
       // Add Statement to List of Statements
-      $statements[] = $statement;
+      if (isset($statement)) {
+        $statements[] = $statement;
+      }
     }
 
     return $statements;
