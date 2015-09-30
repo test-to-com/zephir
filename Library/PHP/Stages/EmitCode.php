@@ -624,6 +624,9 @@ class EmitCode implements IStage {
         $this->_statementAssignArrayIndex($assign['index-expr'], $class, $method);
         $this->_append(['[', ']']);
         break;
+      case 'variable-dynamic-object-property':
+        $this->_append(["\${$assign['variable']}", '->', "\${$assign['property']}"]);
+        break;
       case 'static-property':
         $this->_append([$assign['variable'], '::', "\${$assign['property']}"]);
         break;
@@ -1439,6 +1442,18 @@ class EmitCode implements IStage {
   protected function _expressionCast($cast, $class, $method) {
     $this->_append(['(', $cast['left'], ')']);
     $this->_processExpression($cast['right'], $class, $method);
+  }
+
+  protected function _expressionTernary($ternary, $class, $method) {
+    /* TODO Add Configuration for Line Feed and Alignment
+     * example: expr ? true
+     *               : false;
+     */
+    $this->_processExpression($ternary['left'], $class, $method);
+    $this->_append('?');
+    $this->_processExpression($ternary['right'], $class, $method);
+    $this->_append(':');
+    $this->_processExpression($ternary['extra'], $class, $method);
   }
 
   protected function _expressionVariable($variable, $class, $method) {

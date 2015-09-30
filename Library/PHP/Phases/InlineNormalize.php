@@ -419,16 +419,16 @@ class InlineNormalize implements IPhase {
         // Decouple Multiple Classes into Single Class Catch Clause
         foreach ($catch['classes'] as $catch_class) {
           $new_catch = [
-              'class' => $catch_class,
-              'variable' =>
-              [
-                'type' => 'variable',
-                'value' => $tv_name,
-                'file' => $catch['file'],
-                'line' => $catch['line'],
-                'char' => $catch['char'],
-              ],
-              'statements' => $statements
+            'class' => $catch_class,
+            'variable' =>
+            [
+              'type' => 'variable',
+              'value' => $tv_name,
+              'file' => $catch['file'],
+              'line' => $catch['line'],
+              'char' => $catch['char'],
+            ],
+            'statements' => $statements
           ];
 
           $catches[] = $new_catch;
@@ -489,6 +489,35 @@ class InlineNormalize implements IPhase {
           $assignment['type'] = $assignment['assign-type'];
           unset($assignment['assign-type']);
           break;
+        case 'string-dynamic-object-property': // ex: let this->{"test"} = "works";
+          // Step 1: Create a Local Variable
+          $file = $assignment['file'];
+          $line = $assignment['line'];
+          $char = $assignment['char'];
+          $tv_name = $this->_newLocalVariable($class, $method, 'string', $file, $line, $char);
+
+          // Step 2: Assign Value to New Local
+          $before[] = [
+            'type' => 'assign',
+            'operator' => 'assign',
+            'assign-type' => 'variable',
+            'assign-to-type' => 'variable',
+            'variable' => $tv_name,
+            'expr' => [
+              'type' => 'string',
+              'value' => $assignment['property'],
+              'file' => $file,
+              'line' => $line,
+              'char' => $char
+            ],
+            'file' => $file,
+            'line' => $line,
+            'char' => $char
+          ];
+
+          // Step 3: Modify Original Assignment (to use new local variable)
+          $assignment['assign-type'] = 'variable-dynamic-object-property';
+          $assignment['property'] = $tv_name;
         default:
           $assignment['type'] = 'assign';
           $assignment['assign-to-type'] = $assignment['assign-type'];
@@ -1130,6 +1159,45 @@ class InlineNormalize implements IPhase {
     }
 
     return [$before, $cast, $after];
+  }
+
+  protected function _expressionTernary(&$class, &$method, $ternary) {
+    $before = [];
+    $after = [];
+
+    /* in the Cast Expression, the LHS (i.e. $cast['left'] is just a string */
+
+    // Process Left Expression
+    list($prepend, $left, $append) = $this->_processExpression($class, $method, $ternary['left']);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    $ternary['left'] = $left;
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
+
+    // Process Right Expression
+    list($prepend, $right, $append) = $this->_processExpression($class, $method, $ternary['right']);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    $ternary['right'] = $right;
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
+
+    // Process Extra Expression
+    list($prepend, $extra, $append) = $this->_processExpression($class, $method, $ternary['extra']);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    $ternary['extra'] = $extra;
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
+
+    return [$before, $ternary, $after];
   }
 
   protected function _expressionDEFAULT(&$class, &$method, $expression) {
