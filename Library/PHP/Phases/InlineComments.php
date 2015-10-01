@@ -59,6 +59,11 @@ class InlineComments implements IPhase {
       }
     }
 
+    // Are we dealing with a top level function?
+    if ($ast['type'] === 'function') { // YES: Cleanup it's comments
+      $ast['statements'] = $this->_processStatementBlock($ast['statements']);
+    }
+
     return $ast;
   }
 
@@ -76,9 +81,9 @@ class InlineComments implements IPhase {
 
       if (isset($docblock)) {
         // Add Missing Properties
-        $docblock['file'] = $property['file'];
-        $docblock['line'] = $property['line'];
-        $docblock['char'] = $property['char'];
+        $docblock['file'] = $constant['file'];
+        $docblock['line'] = $constant['line'];
+        $docblock['char'] = $constant['char'];
 
         // Modify the Constant Document Block
         $constant['docblock'] = [$docblock];

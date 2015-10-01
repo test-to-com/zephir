@@ -58,6 +58,9 @@ class Compact implements IStage {
           // TODO: Warn of the Presence of CBLOCKS (for C extension use only)
           $entry = null;
           break;
+        case 'function':
+          $entry = $this->_compactFunction($entry);
+          break;
         case 'class':
           $entry = $this->_compactClass($entry);
           break;
@@ -73,6 +76,22 @@ class Compact implements IStage {
     }
 
     return $newAST;
+  }
+
+  protected function _compactFunction($function) {
+    // Normalize Function Definition - So that we don't always have to test for the existance of
+    if (!isset($function['parameters'])) {
+      $function['parameters'] = [];
+    }
+    if (!isset($function['statements'])) {
+      $function['statements'] = [];
+    }
+    $function['locals'] = [];
+
+    // Compact Function Statements
+    $function['statements'] = $this->_compactStatementBlock($method, $function['statements']);
+
+    return $function;
   }
 
   /**

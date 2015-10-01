@@ -215,6 +215,16 @@ class EmitCode implements IStage {
     $this->_unindent(!$indent);
   }
 
+  protected function _statementRequire($require, $class = null, $method = null) {
+    /* TODO
+     * Normalize the Require Statement and Expression so that we don't have to
+     * 2 handlers for the same thing.
+     */
+    $this->_append('require');
+    $this->_processExpression($require['expr'], $class, $method);
+    $this->_appendEOS();
+  }
+
   protected function _statementClass($class) {
     /*
       class_declaration_statement:
@@ -510,6 +520,53 @@ class EmitCode implements IStage {
 
     if (isset($method['statements'])) {
       $this->_processStatementBlock($method['statements'], $class, $method);
+    }
+
+    // Garauntee that we flush any pending lines
+    $this->_flush();
+    $this->_unindent();
+
+    /*
+     * METHOD FOOTER
+     */
+    $this->_append('}', true);
+  }
+
+  protected function _statementFunction($function, $class = null, $method = null) {
+    $this->_append(['function', $function['name'], '(']);
+    if (count($function['parameters'])) {
+      // TODO: Move to the Flag to Configuration File
+      $config_functionLFParameters = true; // Function Parameters on new line?
+      $this->_flush($config_functionLFParameters);
+      $this->_indent($config_functionLFParameters);
+
+      $first = true;
+      foreach ($function['parameters'] as $parameter) {
+        if (!$first) {
+          $this->_append(',');
+          $this->_flush($config_functionLFParameters);
+        }
+        $this->_processExpression($parameter, $class, $method);
+        $first = false;
+      }
+      $this->_flush($config_functionLFParameters);
+      $this->_unindent($config_functionLFParameters);
+    }
+    $this->_append(')');
+
+    // TODO: Move to the Flag to Configuration File
+    $config_functionLFStartBlock = true; // method '{' on new line?
+    $this->_flush($config_functionLFStartBlock);
+    $this->_append('{', true);
+
+
+    /*
+     * METHOD BODY
+     */
+    $this->_indent();
+
+    if (isset($function['statements'])) {
+      $this->_processStatementBlock($function['statements']);
     }
 
     // Garauntee that we flush any pending lines
@@ -1233,15 +1290,6 @@ class EmitCode implements IStage {
     throw new \Exception('TODO');
   }
 
-  protected function _emitRequire($ast) {
-    /* TODO
-     * Zephir isset does more than the normal php isset
-     */
-    $left = $ast['left'];
-    echo 'require ';
-    $this->_redirectAST($left['type'], $left);
-  }
-
   /**
    * Class Static Method Call
    * 
@@ -1528,6 +1576,11 @@ class EmitCode implements IStage {
      * METHOD FOOTER
      */
     $this->_append('}', true);
+  }
+
+  protected function _expressionRequire($require, $class, $method) {
+    $this->_append('require ');
+    $this->_processExpression($require['left'], $class, $method);
   }
 
   /*

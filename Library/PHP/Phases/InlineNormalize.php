@@ -120,6 +120,13 @@ class InlineNormalize implements IPhase {
    * @return array Old or Transformed AST
    */
   public function top($ast) {
+    switch ($ast['type']) {
+      case 'function':
+        $class = null;
+        $function = null;
+        list($prepend, $ast, $append) = $this->_processStatement($class, $function, $ast);
+        break;
+    }
     return $ast;
   }
 
@@ -205,12 +212,19 @@ class InlineNormalize implements IPhase {
     }
   }
 
+  protected function _statementFunction(&$class, &$method, $function) {
+    /* FUNCTION (STATEMENTS) */
+    $function['statements'] = $this->_processStatementBlock($class, $method, $function['statements']);
+
+    return [null, $function, null];
+  }
+
   protected function _statementLoop(&$class, &$method, $loop) {
     $before = [];
     $after = [];
 
     /* LOOP (STATEMENTS) */
-    $loop['statements'] = $this->_processStatementBlock($class, $loop, $loop['statements']);
+    $loop['statements'] = $this->_processStatementBlock($class, $method, $loop['statements']);
 
     return [$before, $loop, $after];
   }
@@ -601,7 +615,7 @@ class InlineNormalize implements IPhase {
 
   protected function _processExpression(&$class, &$method, $expression) {
     if (!isset($expression['type'])) {
-      throw new Exception('Invalid Expression');
+      throw new \Exception('Invalid Expression');
     }
     $type = $expression['type'];
 
@@ -849,6 +863,29 @@ class InlineNormalize implements IPhase {
     // Likely doesn't apply to PHP (so just remove it)
     list($prepend, $likely, $append) = $this->_processExpression($class, $method, $likely['left']);
     return [$before, $likely, $after];
+  }
+
+  protected function _expressionClosure(&$class, &$method, $closure) {
+    $before = [];
+    $after = [];
+
+    // Transform AST to a more standard function definition AST
+    $closure['parameters'] = [];
+    $closure['statements'] = [];
+
+    // 'left' expression represents parameters
+    if (isset($closure['left'])) {
+      $closure['parameters'] = $closure['left'];
+      unset($closure['left']);
+    }
+
+    // 'right' expression statements
+    if (isset($closure['right'])) {
+      $closure['statements'] = $this->_processStatementBlock($class, $closure, $closure['right']);
+      unset($closure['right']);
+    }
+
+    return [null, $closure, null];
   }
 
   protected function _expressionClosureArrow(&$class, &$method, $expression) {
@@ -1198,6 +1235,16 @@ class InlineNormalize implements IPhase {
     }
 
     return [$before, $ternary, $after];
+  }
+
+  protected function _expressionIstring(&$class, &$method, $istring) {
+    /* TODO figure out what an 'istring' is
+     * example: (strings.zep) return ~"hello";
+     */
+
+    // For now, simply treat as a string
+    $istring['type'] = 'string';
+    return [null, $istring, null];
   }
 
   protected function _expressionDEFAULT(&$class, &$method, $expression) {

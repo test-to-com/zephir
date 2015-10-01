@@ -83,7 +83,7 @@ class Process implements IStage {
 
         // Is the entry to be processed further?
         if (!isset($entry)) { // NO:
-          continue;
+          break;
         }
       }
 
