@@ -704,7 +704,7 @@ class Assign
 		return self::testVarStatic;
 	}
 
-	public function testStaticPropertyArrayMutli1()
+	public function testStaticPropertyArrayMulti1()
 	{
 		let self::testVarStatic       = [];
 		let self::testVarStatic[0][0] = 1;
@@ -718,7 +718,7 @@ class Assign
 		return self::testVarStatic;
 	}
 
-	public function testStaticPropertyArrayMutli2()
+	public function testStaticPropertyArrayMulti2()
 	{
 		let self::testVarStatic                   = [];
 		let self::testVarStatic["hello"]["hello"] = 1;
@@ -732,7 +732,7 @@ class Assign
 		return self::testVarStatic;
 	}
 
-	public function testStaticPropertyArrayMutli3(index)
+	public function testStaticPropertyArrayMulti3(index)
 	{
 		let self::testVarStatic               = [];
 		let self::testVarStatic[index][index] = 1;

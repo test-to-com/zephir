@@ -4,8 +4,8 @@ namespace Test;
 use \stdClass as StandardClass;
 use \Countable;
 
-use Oo\OoConstruct;
-use Oo as NsAlias;
+use Oo\OoConstruct,
+    Oo as NsAlias;
 use Strings as TestStrings;
 use \Test\Echoes as Echoes;
 
