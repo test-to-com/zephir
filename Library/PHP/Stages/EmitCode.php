@@ -1438,12 +1438,16 @@ class EmitCode implements IStage {
   }
 
   protected function _expressionCast($cast, $class, $method) {
+    // TODO Correct Type Casts in Normalization Phase rather than here...
     $type = $cast['left'];
-    // Are we dealing with a ZEP Char Type?
-    if ($type === 'char') { // YES: Convert to PHP String Type
-      $type = 'string';
+    switch($type) {
+      case 'char': // CHAR is a ZEP type only
+        $type = 'string';
+      break;
+      case 'long': // LONG is a ZEP type only
+        $type = 'int';
+        break;
     }
-
     if (isset($type)) {
       $this->_emitter->emit(['(', $type, ')']);
     }
