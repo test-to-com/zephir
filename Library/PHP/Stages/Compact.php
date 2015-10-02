@@ -43,6 +43,16 @@ class Compact implements IStage {
   }
 
   /**
+   * Reset the Stage Instance (set the default state, if a stage is to
+   * be re-used)
+   * 
+   * @return self Return instance of stage for Function Linking.
+   */
+  public function reset() {
+    return $this;
+  }
+  
+  /**
    * Compile or Transform the AST.
    * 
    * @param array $ast AST to be compiled/transformed

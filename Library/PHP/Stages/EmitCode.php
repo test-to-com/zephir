@@ -50,6 +50,17 @@ class EmitCode implements IStage {
   }
 
   /**
+   * Reset the Stage Instance (set the default state, if a stage is to
+   * be re-used)
+   * 
+   * @return self Return instance of stage for Function Linking.
+   */
+  public function reset() {
+    $this->_property = false;
+    $this->_interface = false;
+  }
+
+  /**
    * Compile or Transform the AST.
    * 
    * @param array $ast AST to be compiled/transformed
@@ -135,7 +146,7 @@ class EmitCode implements IStage {
       }
       $this->_emitter->emit($alias['name']);
       if (isset($alias['alias'])) {
-        $this->_emitter->emit(['as', $alias['name']]);
+        $this->_emitter->emit(['as', $alias['alias']]);
       }
       $first = false;
     }
@@ -1683,7 +1694,9 @@ class EmitCode implements IStage {
   }
 
   protected function _expressionString($ast, $class = null, $method = null) {
-    $this->_emitter->emit("\"{$ast['value']}\"");
+    // Make usre that string that include quotes and such, are properly escaped.
+    $string = addslashes($ast['value']);
+    $this->_emitter->emit("\"{$string}\"");
   }
 
   protected function _expressionChar($ast, $class = null, $method = null) {
