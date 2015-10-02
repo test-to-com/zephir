@@ -134,6 +134,8 @@ class Compiler implements ICompiler {
     // Run the Stages for the Compiler
     $stages = $this->getStages();
     foreach ($stages as $index => $stage) {
+      // Reset the Stage for processing a new file
+      $stage->reset();
       // Compile the AST
       $ast = $stage->compile($ast);
     }

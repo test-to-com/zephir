@@ -24,28 +24,60 @@ namespace Zephir\Common;
  * 
  * @author Paulo Ferreira <pf at sourcenotes.org>
  */
-interface Stage extends InjectionAware {
+interface Emitter extends InjectionAware {
 
   /**
-   * Initialize the Stage Instance
+   * Initialize the Emitter Instance
    * 
-   * @return self Return instance of stage for Function Linking.
+   * @return self Return instance of Emitter for Function Linking.
    */
   public function initialize();
 
   /**
-   * Reset the Stage Instance (set the default state, if a stage is to
-   * be re-used)
    * 
-   * @return self Return instance of stage for Function Linking.
+   * @param type $filename
    */
-  public function reset();
-  
+  public function start($filename = null);
+
   /**
-   * Compile or Transform the AST.
    * 
-   * @param array $ast AST to be compiled/transformed
-   * @return array Old or Transformed AST
    */
-  public function compile($ast);
+  public function end();
+
+  /**
+   * 
+   * @param type $flag
+   * @return self Return instance of Emitter for Function Linking.
+   */
+  public function indent($flag = true);
+
+  /**
+   * 
+   * @param type $flag
+   * @return self Return instance of Emitter for Function Linking.
+   */
+  public function unindent($flag = true);
+
+  /**
+   * 
+   * @param string|array $content 
+   * @param type $add_nl
+   * 
+   * @return self Return instance of Emitter for Function Linking.
+   */
+  public function emit($content, $add_nl = false);
+
+  /**
+   * 
+   * @param type $force
+   * @return self Return instance of Emitter for Function Linking.
+   */
+  public function emitNL($force = true);
+
+  /**
+   * 
+   * @param type $add_nl
+   * @return self Return instance of Emitter for Function Linking.
+   */
+  public function emitEOS($add_nl = true);
 }
