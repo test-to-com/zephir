@@ -1195,7 +1195,10 @@ class EmitCode implements IStage {
 
   protected function _statementReturn($return, $class = null, $method = null) {
     $this->_emitter->emit('return');
-    $this->_processExpression($return['expr'], $class, $method);
+    // Are we dealing with an empty return (i.e. return;)?
+    if (isset($return['expr'])) { // NO
+      $this->_processExpression($return['expr'], $class, $method);
+    }
     $this->_emitter->emitEOS();
   }
 
@@ -1329,10 +1332,10 @@ class EmitCode implements IStage {
 
   protected function _expressionNew($new, $class, $method) {
     // Is the new Being Treated as a Variable
-    if(isset($this->_variable)) { // YES
+    if (isset($this->_variable)) { // YES
       $this->_emitter->emit('(');
     }
-    
+
     $this->_emitter->emit(['new', $new['class']]);
     if (isset($new['parameters'])) {
       $this->_emitter->emit('(');
@@ -1355,9 +1358,9 @@ class EmitCode implements IStage {
       $this->_emitter->unindent($config_callLFParameters);
       $this->_emitter->emit(')');
     }
-    
+
     // Is the new being treated as a variable?
-    if(isset($this->_variable)) { // YES
+    if (isset($this->_variable)) { // YES
       $this->_emitter->emit(')');
     }
   }

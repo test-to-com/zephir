@@ -28,6 +28,6 @@ class Range
      * this implies that this is equivalent to 1..(10->join('-'))
      * rather than the (0..10)->join('-')
      */
-		return 0...10->join('-');
+		// return 0...10->join('-');
 	}
 }

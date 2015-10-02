@@ -628,9 +628,13 @@ class InlineNormalize implements IPhase {
   }
 
   protected function _statementReturn(&$class, &$method, $return) {
-    list($before, $expression, $after) = $this->_processExpression($class, $method, $return['expr']);
-    $return['expr'] = $expression;
-    return [$before, $return, $after];
+    // Are we dealing with an empty return (i.e. return;)?
+    if (isset($return['expr'])) { // NO
+      list($before, $expression, $after) = $this->_processExpression($class, $method, $return['expr']);
+      $return['expr'] = $expression;
+      return [$before, $return, $after];
+    }
+    return [null, $return, null];
   }
 
   protected function _statementMcall(&$class, &$method, $statement) {
