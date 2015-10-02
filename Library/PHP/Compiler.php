@@ -19,7 +19,7 @@
 
 namespace Zephir\PHP;
 
-use Zephir\API\FileSystem as IFileSystem;
+use Zephir\Common\FileSystem as IFileSystem;
 use Zephir\Common\Compiler as ICompiler;
 use Zephir\Common\Stage as IStage;
 
@@ -127,12 +127,20 @@ class Compiler implements ICompiler {
       throw new \Exception("ERROR: {$ast['message']} in File[{$ast['file']}]");      
     }
     
+    // Initialize the Code Emitter
+    $_emitter = $this->getDI()->getShared('emitter');    
+    $_emitter->start(str_replace('.zep', '.php', $path));
+    
     // Run the Stages for the Compiler
     $stages = $this->getStages();
     foreach ($stages as $index => $stage) {
       // Compile the AST
       $ast = $stage->compile($ast);
     }
+    
+    // Finish Emitter
+    $_emitter->end();
+    
     return $ast;
   }
 
@@ -211,7 +219,7 @@ class Compiler implements ICompiler {
 
     // Produce a Base Output File Name for the Given Name
     $normalizedPath = str_replace(array(DIRECTORY_SEPARATOR, ":", '/'), '_', $realPath);
-    $compilePath = $fs->realpath($normalizedPath, IFileSystem::OUTPUT);
+    $compilePath = $fs->realpath($normalizedPath, IFileSystem::CACHE);
     return $compilePath;
   }
 
