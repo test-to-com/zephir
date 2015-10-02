@@ -18,6 +18,7 @@ build
 phpunit.xml
 
 output/
+cache/
 cphalcon/
 ext-save/
 

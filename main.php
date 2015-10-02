@@ -15,8 +15,8 @@ use Zephir\FileSystem\HardDisk;
 $di = new \Zephir\DI;
 
 // Set the File System
-$di->set("fileSystem", "\Zephir\FileSystem\HardDisk", true);
-
+$di->set("fileSystem", "\Zephir\Common\FileSystem\HardDisk", true);
+$di->setShared('emitter', "\Zephir\PHP\Emitters\File");
 /*
  * commands
  * api - generate documentation
@@ -30,13 +30,18 @@ $di->set("fileSystem", "\Zephir\FileSystem\HardDisk", true);
 
 // Define Command Line Options
 $specs = new OptionCollection;
-// Output Directory (STRING Optional - DEFAULT output goes to same directory as input)
+// Output Directory (STRING Optional - DEFAULT output goes to ./output)
 $specs->add('o|output?', 'Output directory.')
   ->isa('String');
 
-// Output Directory (STRING Optional - DEFAULT output goes to same directory as input)
+// Cache Directory (STRING Optional - DEFAULT cache goes to ./cache)
+$specs->add('c|cache?', 'Cache directory.')
+  ->isa('String');
+
+// Temporary Directory (STRING Optional - DEFAULT output goes to system temporary directory\zephir)
 $specs->add('t|tmp?', 'Temporary directory.')
   ->isa('String');
+
 
 // Verbose Output (FLAG Option)
 $specs->add('v', 'verbose');
@@ -79,6 +84,9 @@ $cwd = getcwd();
 
 $output_dir = $result->output;
 $fs->setOutputPath(isset($output_dir) && is_dir($output_dir) ? $output_dir : './output');
+
+$cache_dir = $result->cache;
+$fs->setCachePath(isset($cache_dir) && is_dir($cache_dir) ? $cache_dir : './cache');
 
 $tmp_dir = $result->tmp;
 if (isset($tmp_dir) && is_dir($tmp_dir)) {

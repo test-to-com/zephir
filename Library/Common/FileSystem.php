@@ -17,7 +17,7 @@
   +--------------------------------------------------------------------------+
  */
 
-namespace Zephir\API;
+namespace Zephir\Common;
 
 /**
  * Provides a Universal Interface to Zephir Required Filesystem Actions
@@ -26,14 +26,15 @@ namespace Zephir\API;
  */
 interface FileSystem {
   /*
-   * Possible File System Subspaces
+   * Possible File System (Relative To) Subspaces
    */
 
   const NONE = 0;
   const SYSTEM = 1;
   const INPUT = 2;
   const OUTPUT = 3;
-  const TEMP = 4;
+  const CACHE = 4;
+  const TEMP = 5;
 
   /**
    * Checks if the filesystem is initialized
@@ -58,7 +59,7 @@ interface FileSystem {
    * @return string
    * @throws \Exception
    */
-  public function realpath($path, $relative = FileSystemAbstract::NONE);
+  public function realpath($path, $relative = FileSystem::NONE);
 
   /**
    * Checks whether a temporary entry does exist
