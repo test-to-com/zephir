@@ -19,7 +19,7 @@ phpunit.xml
 
 output/
 cache/
-cphalcon/
+phalcon/
 ext-save/
 
 # Ignore for all projects based on Zephir
