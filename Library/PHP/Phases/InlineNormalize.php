@@ -39,77 +39,96 @@ class InlineNormalize implements IPhase {
 
   protected $sudo_methods = [
     'array' => [
-      'combine', // 'array_combine'
-      'count', // 'count'
-      'current', // 'current'
-      'diff', // 'array_diff'
-      'each', // 'each'
-      'end', // 'end'
-      'fill', // 'array_fill'
-      'flip', // 'array_flip'
-      'haskey', // 'array_key_exists'
-      'intersect', // 'array_intersect'
-      'join', // 'implode'
-      'key', // 'key'
-      'keys', // 'array_keys'
-      'map', // 'array_map'
-      'merge', // 'array_merge'
-      'mergerecursive', // 'array_merge_recursive'
-      'next', // 'next'
-      'pad', // 'array_pad'
-      'pop', // 'array_pop'
-      'prepend', // 'array_unshift'
-      'prev', // 'prev'
-      'push', // 'array_push'
-      'rand', // 'array_rand'
-      'reduce', // array_reduce
-      'replace', // 'array_replace'
-      'replacerecursive', // 'array_replace_recursive'
-      'reset', // 'reset'
-      'rev', //  'array_reverse'
-      'reversed', // 'array_reverse'
-      'reversesort', // 'rsort'
-      'reversesortbykey', // 'krsort'
-      'shift', // 'array_shift'
-      'shuffle', // 'shuffle'
-      'slice', // 'array_slice'
-      'sort', // 'sort'
-      'sortbykey', // 'ksort'
-      'splice', // 'array_splice'
-      'split', // 'array_chunk'
-      'sum', // 'array_sum'
-      'tojson', // 'json_encode'
-      'unique', // 'array_unique'
-      'values', // 'array_values'
-      'walk' // 'array_walk'
+      'combine' => 'array_combine',
+      'count' => 'count',
+      'current' => 'current',
+      'diff' => 'array_diff',
+      'each' => 'each',
+      'end' => 'end',
+      'fill' => 'array_fill',
+      'flip' => 'array_flip',
+      'haskey' => 'array_key_exists',
+      'intersect' => 'array_intersect',
+      'join' => 'implode',
+      'key' => 'key',
+      'keys' => 'array_keys',
+      'map' => 'array_map',
+      'merge' => 'array_merge',
+      'mergerecursive' => 'array_merge_recursive',
+      'next' => 'next',
+      'pad' => 'array_pad',
+      'pop' => 'array_pop',
+      'prepend' => 'array_unshift',
+      'prev' => 'prev',
+      'push' => 'array_push',
+      'rand' => 'array_rand',
+      'reduce' => 'array_reduce',
+      'replace' => 'array_replace',
+      'replacerecursive' => 'array_replace_recursive',
+      'reset' => 'reset',
+      'rev' => 'array_reverse',
+      'reversed' => 'array_reverse',
+      'reversesort' => 'rsort',
+      'reversesortbykey' => 'krsort',
+      'shift' => 'array_shift',
+      'shuffle' => 'shuffle',
+      'slice' => 'array_slice',
+      'sort' => 'sort',
+      'sortbykey' => 'ksort',
+      'splice' => 'array_splice',
+      'split' => 'array_chunk',
+      'sum' => 'array_sum',
+      'tojson' => 'json_encode',
+      'unique' => 'array_unique',
+      'values' => 'array_values',
+      'walk' => 'array_walk'
+    ],
+    'char' => [
+      'toHex' => null
+    ],
+    'int' => [
+      'abs' => 'abs',
+      'acos' => 'acos',
+      'asin' => 'asin',
+      'atan' => 'atan',
+      'cos' => 'cos',
+      'exp' => 'exp',
+      'log' => 'log',
+      'pow' => 'pow',
+      'sin' => 'sin',
+      'sqrt' => 'sqrt',
+      'tan' => 'tan',
+      'toBinary' => 'decbin',
+      'toHex' => 'dechex',
+      'toOctal' => 'decoct'
     ],
     'string' => [
-      'camelize', // 'camelize'
-      'compare', // 'strcmp'
-      'compareLocale', // 'strcoll'
-      'format', // 'sprintf'
-      'htmlSpecialChars', // 'htmlspecialchars'
-      'index', // 'strpos'
-      'length', // 'strlen'
-      'lower', // 'strtolower'
-      'lowerFirst', // 'lcfirst'
-      'md5', // 'md5'
-      'nl2br', // 'nl2br'
-      'parseCsv', // 'str_getcsv'
-      'parseJson', // 'json_decode'
-      'repeat', // 'str_repeat'
-      'rev', // 'strrev'
-      'sha1', // 'sha1'
-      'shuffle', // 'str_shuffle'
-      'split', // 'str_split'
-      'toJson', // 'json_encode'
-      'toutf8', // 'utf8_encode'
-      'trim', // 'trim'
-      'trimLeft', // 'ltrim'
-      'trimRight', // 'rtrim'
-      'uncamelize', // 'uncamelize'
-      'upper', // 'strtoupper'
-      'upperFirst' // 'ucfirst'
+      'camelize' => 'camelize',
+      'compare' => 'strcmp',
+      'compareLocale' => 'strcoll',
+      'format' => 'sprintf',
+      'htmlSpecialChars' => 'htmlspecialchars',
+      'index' => 'strpos',
+      'length' => 'strlen',
+      'lower' => 'strtolower',
+      'lowerFirst' => 'lcfirst',
+      'md5' => 'md5',
+      'nl2br' => 'nl2br',
+      'parseCsv' => 'str_getcsv',
+      'parseJson' => 'json_decode',
+      'repeat' => 'str_repeat',
+      'rev' => 'strrev',
+      'sha1' => 'sha1',
+      'shuffle' => 'str_shuffle',
+      'split' => 'str_split',
+      'toJson' => 'json_encode',
+      'toutf8' => 'utf8_encode',
+      'trim' => 'trim',
+      'trimLeft' => 'ltrim',
+      'trimRight' => 'rtrim',
+      'uncamelize' => 'uncamelize',
+      'upper' => 'strtoupper',
+      'upperFirst' => 'ucfirst'
     ]
   ];
 
@@ -162,6 +181,39 @@ class InlineNormalize implements IPhase {
    * @return array New Property Definition, 'NULL' if to be removed
    */
   public function method(&$class, $method) {
+    // Process Visibility
+    $visibility = [];
+    foreach ($method['visibility'] as $entry) {
+      // TODO: Verify if Parser Garauntee trim (so that we can ignore this here)
+      $entry = trim($entry);
+      switch ($entry) {
+        case 'public':
+        case 'protected':
+        case 'private':
+          break;
+        case 'internal':
+          $entry = 'private';
+          break;
+        default:
+          $entry = null;
+      }
+
+      if (isset($entry)) {
+        $visibility[] = $entry;
+      }
+    }
+
+    // Is the visibility set?
+    if (count($visibility) === 0) { // NO: Use a default of public
+      $visibility[] = 'public';
+    } else if (count($visibility) > 1) {
+      $visibility[] = array_unique($entry);
+      if (count($visibility) > 1) {
+        throw new Exception("Method visibility is unclear");
+      }
+    }
+
+    $method['visibility'] = $visibility;
     $method['statements'] = $this->_processStatementBlock($class, $method, $method['statements']);
     return $method;
   }
@@ -734,23 +786,21 @@ class InlineNormalize implements IPhase {
 
     switch ($variable['type']) {
       case 'array':
-        $sudoobject = 'array';
-        break;
+      case 'char':
+      case 'int':
       case 'string':
-        $sudoobject = 'string';
+        $sudoobject = $variable['type'];
         break;
       case 'variable':
         $definition = $this->_lookup($class, $method, $variable);
-        if (isset($definition)) {
-          if (isset($definition['data-type'])) {
-            switch ($definition['data-type']) {
-              case 'array':
-                $sudoobject = 'array';
-                break;
-              case 'string':
-                $sudoobject = 'string';
-                break;
-            }
+        if (isset($definition) && isset($definition['data-type'])) {
+          switch ($definition['data-type']) {
+            case 'array':
+            case 'char':
+            case 'int':
+            case 'string':
+              $sudoobject = $definition['data-type'];
+              break;
           }
         }
     }
@@ -759,17 +809,27 @@ class InlineNormalize implements IPhase {
     // Are we dealing with a sudo object?
     if (isset($sudoobject)) { // YES
       if ($this->_isValidSudoObjectFunction($sudoobject, $expression['name'])) {
-        $handler = $this->_handlerName('_expand' . ucfirst($sudoobject), ucfirst($expression['name']));
+        $handler = $this->_handlerName('_expand', [ $sudoobject, $expression['name']]);
         if (method_exists($this, $handler)) {
           list($prepend, $expression, $append) = $this->$handler($class, $method, $expression);
-          if (isset($prepend) && count($prepend)) {
-            $before = array_merge($before, $prepend);
-          }
-          if (isset($append) && count($append)) {
-            $after = array_merge($after, $append);
-          }
         } else {
-          throw new \Exception("Missing Handler function [{$expression['name']}] for [{$sudoobject}] object.");
+          $handler = $this->_handlerName('_expand', [$sudoobject, 'default']);
+          if (method_exists($this, $handler)) {
+            list($prepend, $expression, $append) = $this->$handler($class, $method, $expression['name'], $expression);
+          } else {
+            $handler = $this->_handlerName('_expand', 'default');
+            if (!method_exists($this, $handler)) {
+              throw new \Exception("Missing Handler function [{$expression['name']}] for [{$sudoobject}] object type.");
+            }
+            list($prepend, $expression, $append) = $this->$handler($class, $method, $sudoobject, $expression['name'], $expression);
+          }
+        }
+
+        if (isset($prepend) && count($prepend)) {
+          $before = array_merge($before, $prepend);
+        }
+        if (isset($append) && count($append)) {
+          $after = array_merge($after, $append);
         }
       } else {
         throw new \Exception("Function [{$expression['name']}] is not valid for an [{$sudoobject}] object.");
@@ -1280,6 +1340,32 @@ class InlineNormalize implements IPhase {
     return [$before, $expression, $after];
   }
 
+  protected function _expandDefault(&$class, &$method, $type, $function, $expression) {
+    $php_function = $this->sudo_methods[$type][$function];
+
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    if (count($join_parameters) === 0) {
+      $parameters = ['parameter' => $variable];
+    } else {
+      $parameters = array_merge(['parameter' => $variable], $join_parameters);
+    }
+
+    // TODO Validate Minimum and Maximum Parameters
+
+    $function = [
+      'type' => 'fcall',
+      'name' => $php_function,
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
   protected function _expandArrayJoin(&$class, &$method, $expression) {
     $variable = $expression['variable'];
     $join_parameters = $expression['parameters'];
@@ -1359,6 +1445,37 @@ class InlineNormalize implements IPhase {
     $function = [
       'type' => 'fcall',
       'name' => 'array_map',
+      'call-type' => 1,
+      'parameters' => $parameters,
+      'file' => $expression['file'],
+      'line' => $expression['line'],
+      'char' => $expression['char']
+    ];
+
+    return [null, $function, null];
+  }
+
+  protected function _expandCharToHex(&$class, &$method, $expression) {
+    $variable = $expression['variable'];
+    $join_parameters = $expression['parameters'];
+    if (count($join_parameters) === 0) {
+      $parameters = [
+        [
+          'type' => 'string',
+          'value' => '%X',
+          'file' => $expression['file'],
+          'line' => $expression['line'],
+          'char' => $expression['char']
+        ],
+        'parameter' => $variable
+      ];
+    } else {
+      throw new \Exception("String length() requires no parameters");
+    }
+
+    $function = [
+      'type' => 'fcall',
+      'name' => 'sprintf',
       'call-type' => 1,
       'parameters' => $parameters,
       'file' => $expression['file'],
@@ -1942,23 +2059,30 @@ class InlineNormalize implements IPhase {
 
   protected function _isValidSudoObjectFunction($otype, $fname) {
     if (isset($this->sudo_methods[$otype])) {
-      return in_array($fname, $this->sudo_methods[$otype]);
+      return array_key_exists($fname, $this->sudo_methods[$otype]);
     }
 
     return false;
   }
 
   protected function _handlerName($prefix, $name) {
-    $name = implode(
-      array_map(function($e) {
-        return ucfirst(trim($e));
-      }, explode('-', $name))
-    );
-    $name = implode(
-      array_map(function($e) {
-        return ucfirst(trim($e));
-      }, explode('_', $name))
-    );
+    if (is_string($name)) {
+      $name = implode(
+        array_map(function($e) {
+          return ucfirst(trim($e));
+        }, explode('-', $name))
+      );
+      $name = implode(
+        array_map(function($e) {
+          return ucfirst(trim($e));
+        }, explode('_', $name))
+      );
+    } else if (is_array($name)) {
+      $name = implode(
+        array_map(function($e) {
+          return ucfirst(trim($e));
+        }, $name));
+    }
     return $prefix . $name;
   }
 
