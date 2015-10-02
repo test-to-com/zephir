@@ -374,6 +374,32 @@ class InlineNormalize implements IPhase {
     return [$before, $statement, $after];
   }
 
+  protected function _statementFetch(&$class, &$method, $fetch) {
+    // Convert fetch statement to if statement and process that
+    $if = [
+      'type' => 'if',
+      'expr' => $fetch['expr'],
+      'file' => $fetch['file'],
+      'line' => $fetch['line'],
+      'char' => $fetch['char'],
+    ];
+
+    /* TODO
+     * This solution works, BUT, it also should be possible to solve this
+     * as terniary statement instead...
+     * Verify which solution is best:
+     * example code: phalcon->http/request.zep
+     * fetch address, _SERVER["HTTP_X_FORWARDED_FOR"];
+		 * if address === null {
+		 *	  	fetch address, _SERVER["HTTP_CLIENT_IP"];
+		 * }
+     * 
+     * doing: address = isset _SERVER["HTTP_X_FORWARDED_FOR"] ? _SERVER["HTTP_X_FORWARDED_FOR"] : null;
+     * should also work!?
+     */
+    return $this->_statementIf($class, $method, $if);
+  }
+
   protected function _statementIf(&$class, &$method, $statement) {
     $before = [];
     $after = [];
