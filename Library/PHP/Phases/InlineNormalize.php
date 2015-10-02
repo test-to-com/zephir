@@ -102,6 +102,22 @@ class InlineNormalize implements IPhase {
       'toHex' => 'dechex',
       'toOctal' => 'decoct'
     ],
+    'double' => [
+      'abs' => 'abs',
+      'acos' => 'acos',
+      'asin' => 'asin',
+      'atan' => 'atan',
+      'cos' => 'cos',
+      'exp' => 'exp',
+      'log' => 'log',
+      'pow' => 'pow',
+      'sin' => 'sin',
+      'sqrt' => 'sqrt',
+      'tan' => 'tan',
+      'toBinary' => 'decbin',
+      'toHex' => 'dechex',
+      'toOctal' => 'decoct'
+    ],
     'string' => [
       'camelize' => 'camelize',
       'compare' => 'strcmp',
@@ -788,6 +804,7 @@ class InlineNormalize implements IPhase {
       case 'array':
       case 'char':
       case 'int':
+      case 'double':
       case 'string':
         $sudoobject = $variable['type'];
         break;
@@ -798,6 +815,7 @@ class InlineNormalize implements IPhase {
             case 'array':
             case 'char':
             case 'int':
+            case 'double':
             case 'string':
               $sudoobject = $definition['data-type'];
               break;
@@ -1032,7 +1050,14 @@ class InlineNormalize implements IPhase {
     // Compact List Expression
     $left = $list['left'];
     if (isset($left['type'])) {
-      list($prepend, $list, $append) = $this->_processExpression($class, $method, $left);
+      // Are we dealing with concat operation?
+      if ($left['type'] !== 'concat') {
+        list($prepend, $list, $append) = $this->_processExpression($class, $method, $left);
+      }
+      /* TODO: Improve Handling of Expression and Return types so as to be
+       * able to apply sudo-object methods globally
+       * ex: stringmethods.zep -> return ("hello" . "hello")->length();
+       */
     } else {
       throw new \Exception("Unexpected List Expression in line [{$assign['line']}]");
     }

@@ -36,6 +36,11 @@ class EmitCode implements IStage {
   protected $_property = false;
   // Set Interface Mode (i.e. when emiting methods, emit only a method declaration
   protected $_interface = false;
+  /* Special Handling when we are processing a new as variable
+   * example: fcall.zep
+   * 	return new Fcall()->testStrtokVarBySlash(str);
+   */
+  protected $_variable = false;
   // Current Emitter
   protected $_emitter = null;
 
@@ -58,6 +63,7 @@ class EmitCode implements IStage {
   public function reset() {
     $this->_property = false;
     $this->_interface = false;
+    $this->_variable = false;
   }
 
   /**
@@ -1266,7 +1272,27 @@ class EmitCode implements IStage {
    * @param type $ast
    */
   protected function _expressionMcall($call, $class = null, $method = null) {
+    /* TODO: Handle Special Case:
+     * example: fcall.zep - return new Fcall()->testStrtokVarBySlash(str);
+     * PHP doesn't allow this type of linking so we have 2 options
+     * 1. wrap the new Fcall() in parentesis (this is the current solution).
+     * result: return ( new Fcall () )->testStrtokVarBySlash($str);
+     * 
+     * 2. create a local variable to accept the result of the new Fcall() and then
+     * use that variable
+     * result: 
+     * $__t_o_1 = new Fcall ();
+     * return $__t_o_1->testStrtokVarBySlash($str);
+     * 
+     * Solution 1 can be done directly in the emitter. 
+     * Solution 2 requires that we modify the AST (i.e. has to be done in the
+     * normalization phase, and might produce slower code)
+     * 
+     * Study Solution...
+     */
+    $this->_variable = true;
     $this->_processExpression($call['variable']);
+    $this->_variable = false;
     $this->_emitter->emit(['->', $call['name'], '(']);
     if (count($call['parameters'])) {
       $first = true;
@@ -1302,6 +1328,11 @@ class EmitCode implements IStage {
   }
 
   protected function _expressionNew($new, $class, $method) {
+    // Is the new Being Treated as a Variable
+    if(isset($this->_variable)) { // YES
+      $this->_emitter->emit('(');
+    }
+    
     $this->_emitter->emit(['new', $new['class']]);
     if (isset($new['parameters'])) {
       $this->_emitter->emit('(');
@@ -1322,6 +1353,11 @@ class EmitCode implements IStage {
       }
       $this->_emitter->emitNL($config_callLFParameters);
       $this->_emitter->unindent($config_callLFParameters);
+      $this->_emitter->emit(')');
+    }
+    
+    // Is the new being treated as a variable?
+    if(isset($this->_variable)) { // YES
       $this->_emitter->emit(')');
     }
   }
@@ -1440,10 +1476,10 @@ class EmitCode implements IStage {
   protected function _expressionCast($cast, $class, $method) {
     // TODO Correct Type Casts in Normalization Phase rather than here...
     $type = $cast['left'];
-    switch($type) {
+    switch ($type) {
       case 'char': // CHAR is a ZEP type only
         $type = 'string';
-      break;
+        break;
       case 'long': // LONG is a ZEP type only
         $type = 'int';
         break;
