@@ -1330,6 +1330,11 @@ class EmitCode implements IStage {
     $this->_emitter->emit(')');
   }
 
+  protected function _expressionClone($clone, $class, $method) {
+    $this->_emitter->emit('clone');
+    $this->_processExpression($clone['left'], $class, $method);
+  }
+
   protected function _expressionNew($new, $class, $method) {
     // Is the new Being Treated as a Variable
     if (isset($this->_variable)) { // YES

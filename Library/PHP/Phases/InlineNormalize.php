@@ -1035,16 +1035,22 @@ class InlineNormalize implements IPhase {
   }
 
   protected function _expressionFetch(&$class, &$method, $fetch) {
+    $before = [];
+    $after = [];
+    
+    // Process Right Expression
+    list($before, $left, $after) = $this->_processExpression($class, $method, $fetch['right']);
+    
     // Replace Fetch with isset(....)
     $expression = [
       'type' => 'isset',
-      'left' => $fetch['right'],
+      'left' => $left,
       'file' => $fetch['file'],
       'line' => $fetch['line'],
       'char' => $fetch['char'],
     ];
 
-    return [null, $expression, null];
+    return [$before, $expression, $after];
   }
 
   protected function _expressionEmpty(&$class, &$method, $empty) {
