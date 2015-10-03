@@ -390,9 +390,9 @@ class InlineNormalize implements IPhase {
      * Verify which solution is best:
      * example code: phalcon->http/request.zep
      * fetch address, _SERVER["HTTP_X_FORWARDED_FOR"];
-		 * if address === null {
-		 *	  	fetch address, _SERVER["HTTP_CLIENT_IP"];
-		 * }
+     * if address === null {
+     * 	  	fetch address, _SERVER["HTTP_CLIENT_IP"];
+     * }
      * 
      * doing: address = isset _SERVER["HTTP_X_FORWARDED_FOR"] ? _SERVER["HTTP_X_FORWARDED_FOR"] : null;
      * should also work!?
@@ -597,6 +597,37 @@ class InlineNormalize implements IPhase {
           $assignment['type'] = $assignment['assign-type'];
           unset($assignment['assign-type']);
           break;
+        case 'dynamic-variable-string':
+          // Step 1: Create a Local Variable
+          $file = $assignment['file'];
+          $line = $assignment['line'];
+          $char = $assignment['char'];
+          $tv_name = $this->_newLocalVariable($class, $method, 'string', $file, $line, $char);
+          // Step 2: Assign Value to New Local
+          $before[] = [
+            'type' => 'assign',
+            'operator' => 'assign',
+            'assign-type' => 'variable',
+            'assign-to-type' => 'variable',
+            'variable' => $tv_name,
+            'expr' => [
+              'type' => 'string',
+              'value' => $assignment['variable'],
+              'file' => $file,
+              'line' => $line,
+              'char' => $char
+            ],
+            'file' => $file,
+            'line' => $line,
+            'char' => $char
+          ];
+
+          // Step 3: Modify Original Assignment (to use new local variable)
+          $assignment['assign-type'] = 'dynamic-variable';
+          $assignment['variable'] = $tv_name;
+          $assignment['type'] = 'assign';
+          $assignment['assign-to-type'] = $assignment['assign-type'];
+          break;
         case 'string-dynamic-object-property': // ex: let this->{"test"} = "works";
           // Step 1: Create a Local Variable
           $file = $assignment['file'];
@@ -626,6 +657,9 @@ class InlineNormalize implements IPhase {
           // Step 3: Modify Original Assignment (to use new local variable)
           $assignment['assign-type'] = 'variable-dynamic-object-property';
           $assignment['property'] = $tv_name;
+          $assignment['type'] = 'assign';
+          $assignment['assign-to-type'] = $assignment['assign-type'];
+          break;
         default:
           $assignment['type'] = 'assign';
           $assignment['assign-to-type'] = $assignment['assign-type'];
@@ -650,6 +684,18 @@ class InlineNormalize implements IPhase {
   protected function _statementAssign(&$class, &$method, $assign) {
     list($before, $expression, $after) = $this->_processExpression($class, $method, $assign['expr']);
     $assign['expr'] = $expression;
+    if (isset($assign['index-expr'])) {
+      foreach ($assign['index-expr'] as $i => $e) {
+        list($prepend, $expression, $append) = $this->_processExpression($class, $method, $e);
+        if (isset($prepend) && count($prepend)) {
+          $before = array_merge($before, $prepend);
+        }
+        $assign['index-expr'][$i] = $expression;
+        if (isset($append) && count($append)) {
+          $after = array_merge($after, $append);
+        }
+      }
+    }
     return [$before, $assign, $after];
   }
 
@@ -1037,10 +1083,27 @@ class InlineNormalize implements IPhase {
   protected function _expressionFetch(&$class, &$method, $fetch) {
     $before = [];
     $after = [];
-    
+
+    /* TODO: Optimization
+     * The following code (taken from: phalcon\annotations\adapter\memory.zep)
+      if fetch data, this->_data[strtolower(key)] {
+      return data;
+      }
+     * can be further optimized.
+     * this get converted to 
+     * if(zephir_isset($this->_data, strtolower($key)) {
+     *   $data = $this->_data[strtolower($key)];
+     *   return $data;
+     * }
+     * 
+     * Notice that 2 calls are made to strtolower($key). 
+     * IF we used a temporary variable to store the result of strtolower($key)
+     * we could save a function call.
+     */
+
     // Process Right Expression
     list($before, $left, $after) = $this->_processExpression($class, $method, $fetch['right']);
-    
+
     // Replace Fetch with isset(....)
     $expression = [
       'type' => 'isset',

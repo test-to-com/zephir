@@ -610,6 +610,9 @@ class EmitCode implements IStage {
       case 'variable':
         $this->_emitter->emit("\${$assign['variable']}");
         break;
+      case 'dynamic-variable':
+        $this->_emitter->emit("\$\${$assign['variable']}");
+        break;
       case 'variable-append':
         $this->_emitter->emit(["\${$assign['variable']}", '[', ']']);
         break;
