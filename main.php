@@ -15,8 +15,8 @@ $di = new DI;
 
 // Set the File System
 $di->set("fileSystem", "\Zephir\Common\FileSystem\HardDisk", true);
-//$di->setShared('emitter', "\Zephir\PHP\Emitters\File");
-$di->setShared('emitter', "\Zephir\PHP\Emitters\Console");
+$di->setShared('emitter', "\Zephir\PHP\Emitters\File");
+//$di->setShared('emitter', "\Zephir\PHP\Emitters\Console");
 /*
  * commands
  * api - generate documentation
