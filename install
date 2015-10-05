@@ -27,20 +27,20 @@ gcc -Wl,-rpath /usr/local/lib -I/usr/local/include -L/usr/local/lib -L/opt/local
 cd ..
 
 # Using the -c option will copy zephir in /usr/local/bin
-options='c'
-while getopts $options option
-do
-  if [[ "$option" == "c" ]]; then
-    ZEPHIRDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-    sed "s#%ZEPHIRDIR%#$ZEPHIRDIR#g" bin/zephir > bin/zephir-cmd
-    chmod 755 bin/zephir-cmd
-    sudo cp bin/zephir-cmd /usr/local/bin/zephir
-    rm bin/zephir-cmd
-    exit 0
-  fi
-done
+#options='c'
+#while getopts $options option
+#do
+#  if [[ "$option" == "c" ]]; then
+#    ZEPHIRDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+#    sed "s#%ZEPHIRDIR%#$ZEPHIRDIR#g" bin/zephir > bin/zephir-cmd
+#    chmod 755 bin/zephir-cmd
+#    sudo cp bin/zephir-cmd /usr/local/bin/zephir
+#    rm bin/zephir-cmd
+#    exit 0
+#  fi
+#done
 
 
-if [[ -d "/etc/bash_completion.d/" && $EUID = 0 ]]; then
-  sudo cp bin/bash_completion /etc/bash_completion.d/zephir
-fi
+#if [[ -d "/etc/bash_completion.d/" && $EUID = 0 ]]; then
+#  sudo cp bin/bash_completion /etc/bash_completion.d/zephir
+#fi

@@ -56,13 +56,13 @@ class Theme
         if ($themeInfosPath) {
             $themeInfos = json_decode(file_get_contents($themeInfosPath), true);
             if (!$themeInfos) {
-                throw new \Exception("Cant parse file $themeInfosPath");
+                throw new Exception("Cant parse file $themeInfosPath");
             } else {
                 $this->themeInfos = $themeInfos;
                 if (isset($themeInfos["extends"])) {
                     $extThemePath = $documentation->findThemePathByName($themeInfos["extends"]);
                     if (!$extThemePath) {
-                        throw new \Exception("Unable to find extended theme " . $themeInfos["extends"]);
+                        throw new Exception("Unable to find extended theme " . $themeInfos["extends"]);
                     }
 
                     $this->extendedTheme = new Theme($extThemePath, $outputDir, $themeConfig, $config, $documentation);

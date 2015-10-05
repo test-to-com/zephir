@@ -109,6 +109,12 @@ class DeclareTest
 		return a;
 	}
 
+	public function testDeclareMcallExpression()
+	{
+		var a = this->testDeclare14();
+		return a;
+	}
+
   public function testNestedDeclare1() {
     int a = 1;
     if(a === 1) {

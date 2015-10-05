@@ -192,6 +192,13 @@ class CompilationContext
     public $logger;
 
     /**
+     * The current backend
+     *
+     * @var BaseBackend
+     */
+    public $backend;
+
+    /**
      * Transform class/interface name to FQN format
      * @todo WHY WHY :'(
      *
@@ -200,7 +207,7 @@ class CompilationContext
      */
     public function getFullName($className)
     {
-        $namespace = (isset($this->currentMethod) && $this->currentMethod instanceof FunctionDefinitionAbstract) ?
+        $namespace = (isset($this->currentMethod) && $this->currentMethod instanceof FunctionDefinition) ?
             $this->currentMethod->getNamespace() :
             $this->classDefinition->getNamespace();
 

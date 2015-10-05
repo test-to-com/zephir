@@ -42,13 +42,4 @@ class BranchPrediction
 			return false;
 		}
 	}
-
-	public function testUnlikely3(var a)
-	{
-		if unlikely a === 1 {
-			return true;
-		} else {
-			return false;
-		}
-	}
 }

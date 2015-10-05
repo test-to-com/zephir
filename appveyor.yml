@@ -1,6 +1,6 @@
 environment:
   matrix:
-  - PHP_VERSION: 5.6.12
+  - PHP_VERSION: 5.6.14
     PHP_DEP_VER: 5.6
   BUILD_PLATFORM: x86
   PHP_VC: 11
@@ -63,6 +63,8 @@ install:
 
 build_script:
   - 'bin\zephir build'
+  - 'type compile-errors.log'
+  - 'type compile.log'
   - 'php vendor\phpunit\phpunit\phpunit.php --debug'
 
 artifacts:

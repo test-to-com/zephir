@@ -9,15 +9,14 @@ require __DIR__ . '/bootstrap.php';
 use GetOptionKit\OptionCollection;
 use GetOptionKit\OptionParser;
 use GetOptionKit\OptionPrinter\ConsoleOptionPrinter;
-use Zephir\API\FileSystem;
-use Zephir\FileSystem\HardDisk;
+use Zephir\PHP\DI;
 
-$di = new \Zephir\DI;
+$di = new DI;
 
 // Set the File System
 $di->set("fileSystem", "\Zephir\Common\FileSystem\HardDisk", true);
-$di->setShared('emitter', "\Zephir\PHP\Emitters\File");
-//$di->setShared('emitter', "\Zephir\PHP\Emitters\Console");
+//$di->setShared('emitter', "\Zephir\PHP\Emitters\File");
+$di->setShared('emitter', "\Zephir\PHP\Emitters\Console");
 /*
  * commands
  * api - generate documentation

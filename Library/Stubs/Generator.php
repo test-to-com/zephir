@@ -318,7 +318,7 @@ EOF;
                 break;
 
             default:
-                throw new \Exception('Stubs - value with type: ' . $parameter['default']['type'] . ' is not supported');
+                throw new Exception('Stubs - value with type: ' . $parameter['default']['type'] . ' is not supported');
                 break;
         }
     }

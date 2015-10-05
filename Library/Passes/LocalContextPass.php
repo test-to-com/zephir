@@ -19,7 +19,7 @@
 
 namespace Zephir\Passes;
 
-use Zephir\Statements\StatementsBlockAbstract as StatementsBlock;
+use Zephir\StatementsBlock;
 
 /**
  * LocalContextPass

@@ -83,7 +83,8 @@ class Config
             'constant-folding'                   => true,
             'static-constant-class-folding'      => true,
             'call-gatherer-pass'                 => true,
-            'check-invalid-reads'                => false
+            'check-invalid-reads'                => false,
+            'internal-call-transformation'       => false
         ),
         'namespace'   => '',
         'name'        => '',
@@ -113,7 +114,7 @@ class Config
         if (file_exists('config.json')) {
             $config = json_decode(file_get_contents('config.json'), true);
             if (!is_array($config)) {
-                throw new \Exception(
+                throw new Exception(
                     "config.json is not valid or there is no Zephir extension initialized in this directory"
                 );
             }

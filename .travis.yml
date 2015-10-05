@@ -6,6 +6,7 @@ php:
   - 5.4
   - 5.5
   - 5.6
+  - 7.0
 
 cache:
     - apt
@@ -22,6 +23,7 @@ install:
  - ./install
 
 before_script:
+ - if [[ "$TRAVIS_PHP_VERSION" == "7.0" ]]; then rm unit-tests/Extension/PregmatchTest.php; fi
  - $(phpenv which php) compiler.php generate
  - $(phpenv which php) compiler.php stubs
  - $(phpenv which php) compiler.php api
@@ -30,11 +32,15 @@ before_script:
 
 script:
  - vendor/bin/phpcs --standard=PSR2 --report=emacs --extensions=php --warning-severity=0 Library/ unit-tests/Extension/ unit-tests/Zephir/
- - valgrind --read-var-info=yes --error-exitcode=1 --fullpath-after= --track-origins=yes --leak-check=full phpunit --debug
+ - valgrind --read-var-info=yes --error-exitcode=1 --fullpath-after= --track-origins=yes --leak-check=full phpunit --debug --coverage-clover coverage.clover
 
 after_failure:
  - sudo apt-get -qq install gdb
  - ./unit-tests/ci/after_failure.sh
+
+after_script:
+  - wget https://scrutinizer-ci.com/ocular.phar
+  - php ocular.phar code-coverage:upload --format=php-clover coverage.clover
 
 notifications:
   email:
