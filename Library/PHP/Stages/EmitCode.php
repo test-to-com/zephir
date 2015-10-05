@@ -292,7 +292,6 @@ class EmitCode implements IStage {
       $this->_emitter->indent($config_interfaceLFExtends);
 
       $this->_emitter->emit('extends');
-      $this->_property = true;
 
       $first = true;
       $indent = true;
@@ -303,14 +302,13 @@ class EmitCode implements IStage {
           $this->_emitter->indent($indent);
           $indent = false;
         }
+        $this->_property = true;
         $this->_processExpression($extend);
         $first = false;
       }
       $this->_emitter->emitNL();
       $this->_emitter->unindent(!$indent);
       $this->_emitter->unindent($config_interfaceLFExtends);
-
-      $this->_property = false;
     }
 
     // TODO: Move to the Flag to Configuration File
@@ -1168,7 +1166,6 @@ class EmitCode implements IStage {
       $this->_emitter->emit(['catch', '(']);
       $this->_property = true;
       $this->_processExpression($catch['class'], $class, $method);
-      $this->_property = false;
       $this->_processExpression($catch['variable'], $class, $method);
       $this->_emitter->emit(')', true);
 
@@ -1417,7 +1414,6 @@ class EmitCode implements IStage {
         $this->_emitter->emit(['isset', '(']);
         $this->_property = true;
         $this->_processExpression($left['left'], $class, $method);
-        $this->_property = false;
         $this->_emitter->emit('::');
         $this->_processExpression($left['right'], $class, $method);
         $this->_emitter->emit(')');
@@ -1458,7 +1454,6 @@ class EmitCode implements IStage {
     // Flag the Next Expression as Property Expression
     $this->_property = true;
     $this->_processExpression($right, $class, $method);
-    $this->_property = false;
   }
 
   protected function _expressionPropertyDynamicAccess($expression, $class = null, $method = null) {
@@ -1475,7 +1470,6 @@ class EmitCode implements IStage {
     $right = $expression['right'];
     $this->_property = true;
     $this->_processExpression($left, $class, $method);
-    $this->_property = false;
     $this->_emitter->emit('::');
     $this->_processExpression($right, $class, $method);
   }
@@ -1486,8 +1480,8 @@ class EmitCode implements IStage {
     $this->_property = true;
     $this->_processExpression($left, $class, $method);
     $this->_emitter->emit('::');
+    $this->_property = true;
     $this->_processExpression($right, $class, $method);
-    $this->_property = false;
   }
 
   protected function _expressionCast($cast, $class, $method) {
@@ -1525,6 +1519,7 @@ class EmitCode implements IStage {
     } else {
       $this->_emitter->emit("\${$variable['value']}");
     }
+    $this->_property = false;
   }
 
   protected function _emitNewType($ast) {
@@ -1711,7 +1706,6 @@ class EmitCode implements IStage {
     $this->_emitter->emit('instanceof');
     $this->_property = true;
     $this->_processExpression($operation['right'], $class, $method);
-    $this->_property = true;
   }
 
   protected function _expressionLess($operation, $class, $method) {
