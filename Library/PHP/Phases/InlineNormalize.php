@@ -280,6 +280,63 @@ class InlineNormalize implements IPhase {
     }
   }
 
+  protected function _statementDeclare(&$class, &$method, $declare) {
+    /* NOTE:
+     * Under normal conditions this statement type is captured by the 
+     * Compact Phase, but in the case of clsoures, this can only be processed
+     * here (as, the compact phase does not do a deep parse of the AST)
+     * 
+     * TODO: Arranje to move this back to Compact Phase
+     * 
+     * Example Problem from (phalcon/text function dynamic)
+      let result = preg_replace_callback(pattern, function (matches) {
+      var words;
+      let words = explode("|", matches[1]);
+      return words[array_rand(words)];
+      }, result);
+     * 
+     * The closure is a parameter, and therefore not processed by the 
+     * Compact Phase
+     */
+
+    $lets = [];
+    $data_type = $declare['data-type'];
+    foreach ($declare['variables'] as $variable) {
+      // Normalize Declaration
+      $variable['name'] = $variable['variable'];
+      $variable['data-type'] = $data_type;
+      unset($variable['variable']);
+
+      // Does the variable have an initial value set?
+      if (isset($variable['expr'])) { // YES: Create a Let for the Statement
+        $lets[] = [
+          'type' => 'let',
+          'assignments' => [
+            [
+              'assign-type' => 'variable',
+              'operator' => 'assign',
+              'variable' => $variable['name'],
+              'expr' => $variable['expr'],
+              'file' => $variable['file'],
+              'line' => $variable['line'],
+              'char' => $variable['char'],
+            ]
+          ],
+          'file' => $variable['file'],
+          'line' => $variable['line'],
+          'char' => $variable['char'],
+        ];
+
+        unset($variable['expr']);
+      }
+
+      // Add Declaration to Method Locals List
+      $method['locals'][$variable['name']] = $variable;
+    }
+
+    return [$lets, null, null];
+  }
+
   protected function _statementFunction(&$class, &$method, $function) {
     /* FUNCTION (STATEMENTS) */
     $function['statements'] = $this->_processStatementBlock($class, $method, $function['statements']);

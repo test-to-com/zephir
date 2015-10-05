@@ -667,17 +667,23 @@ class EmitCode implements IStage {
       case 'assign':
         $this->_emitter->emit('=');
         break;
-      case "concat-assign":
-        $this->_emitter->emit('.=');
-        break;
-      case 'mul-assign':
-        $this->_emitter->emit('*=');
-        break;
       case 'add-assign':
         $this->_emitter->emit('+=');
         break;
       case 'sub-assign':
+        $this->_emitter->emit('-=');
+        break;
+      case 'mul-assign':
+        $this->_emitter->emit('*=');
+        break;
+      case 'div-assign':
+        $this->_emitter->emit('/=');
+        break;
+      case "concat-assign":
         $this->_emitter->emit('.=');
+        break;
+      case 'mod-assign':
+        $this->_emitter->emit('%=');
         break;
       default:
         throw new \Exception("Unhandled assignment operator  [{$assign['operator']}] in line [{$assign['line']}]");
