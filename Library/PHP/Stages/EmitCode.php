@@ -721,7 +721,7 @@ class EmitCode implements IStage {
     $this->_processExpression($for['expr'], $class, $method);
     $this->_emitter->emit('as');
     if (isset($key)) {
-      $this->_emitter->emit("\${$key}", '=>', "\${$value}");
+      $this->_emitter->emit(["\${$key}", '=>', "\${$value}"]);
     } else {
       $this->_emitter->emit("\${$value}");
     }

@@ -73,3 +73,27 @@ function zephir_isset_property($object, $property) {
   }
   return false;
 }
+
+function starts_with($str, $compared, $case_sensitive = false) {
+  return zephir_starts_with($str, $compared, $case_sensitive);
+}
+
+function zephir_starts_with($str, $compared, $case_sensitive = false) {
+  if (!isset($str) || !isset($compared)) {
+    return false;
+  }
+
+  if (!is_string($str) || !isset($compared)) {
+    return false;
+  }
+
+  $l_str = strlen($str);
+  $l_compared = strlen($compared);
+  if ($l_str < $l_compared) {
+    return false;
+  } else if ($l_str === $l_compared) {
+    return $case_sensitive ? $l_str === $l_compared : strcasecmp($str, $compared, $l_compared) === 0;
+  } else {
+    return $case_sensitive ? substr($str, 0, $l_compared) === $compared : strncasecmp($str, $compared, $l_compared) === 0;
+  }
+}
