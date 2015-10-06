@@ -36,34 +36,50 @@ function is_php_version($version) {
 
 /**
  * 
- * @param type $str
- * @param type $compared
- * @param type $case_sensitive
+ * @param string $haystack
+ * @param string $needle
+ * @param boolean $case_sensitive
  * @return boolean
  */
-function starts_with($str, $compared, $case_sensitive = false) {
-  if (!isset($str) || !isset($compared)) {
+function starts_with($haystack, $needle, $case_sensitive = false) {
+  if (!isset($haystack) && is_string($haystack)) {
+    return false;
+  }
+  if (!isset($needle) && is_string($needle)) {
     return false;
   }
 
-  if (!is_string($str) || !isset($compared)) {
+  $l_haystack = strlen($haystack);
+  $l_needle = strlen($needle);
+  if ($l_haystack < $l_needle) {
     return false;
-  }
-
-  $l_str = strlen($str);
-  $l_compared = strlen($compared);
-  if ($l_str < $l_compared) {
-    return false;
-  } else if ($l_str === $l_compared) {
-    return $case_sensitive ? $l_str === $l_compared : strcasecmp($str, $compared, $l_compared) === 0;
+  } else if ($l_haystack === $l_needle) {
+    return $case_sensitive ? $l_haystack === $l_needle : strcasecmp($haystack, $needle, $l_needle) === 0;
   } else {
-    return $case_sensitive ? substr($str, 0, $l_compared) === $compared : strncasecmp($str, $compared, $l_compared) === 0;
+    return $case_sensitive ? substr($haystack, 0, $l_needle) === $needle : strncasecmp($haystack, $needle, $l_needle) === 0;
   }
 }
 
 /**
  * 
- * @param type $class
+ * @param string $haystack
+ * @param string $needle
+ * @return boolean
+ */
+function memstr($haystack, $needle) {
+  if (!isset($haystack) && is_string($haystack)) {
+    return false;
+  }
+  if (!isset($needle) && is_string($needle)) {
+    return false;
+  }
+
+  return !(strpos($haystack, $needle) === FALSE);
+}
+
+/**
+ * 
+ * @param string $class
  * @return \class
  * @throws \Exception
  */
@@ -84,8 +100,8 @@ function create_instance($class) {
 
 /**
  * 
- * @param type $class
- * @param type $parameters
+ * @param string $class
+ * @param array $parameters
  * @return type
  * @throws \Exception
  */
