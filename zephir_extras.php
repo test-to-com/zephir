@@ -54,7 +54,7 @@ function starts_with($haystack, $needle, $case_sensitive = false) {
   if ($l_haystack < $l_needle) {
     return false;
   } else if ($l_haystack === $l_needle) {
-    return $case_sensitive ? $l_haystack === $l_needle : strcasecmp($haystack, $needle, $l_needle) === 0;
+    return $case_sensitive ? $l_haystack === $l_needle : strcasecmp($haystack, $needle) === 0;
   } else {
     return $case_sensitive ? substr($haystack, 0, $l_needle) === $needle : strncasecmp($haystack, $needle, $l_needle) === 0;
   }

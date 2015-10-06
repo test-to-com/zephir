@@ -60,3 +60,23 @@ function zephir_isset_property($object, $property) {
   }
   return false;
 }
+
+/**
+ * 
+ * @param mixed $var
+ * @return boolean
+ */
+function zephir_isempty($var) {
+  if (isset($var) && ($var !== null)) {
+    if (is_bool($var)) {
+      return $var === FALSE;
+    } else if (is_string($var)) {
+      return strlen($var) > 0;
+    }
+
+    // equivalent !zend_is_true($var)
+    return ((bool) $var) === FALSE;
+  }
+
+  return true;
+}
