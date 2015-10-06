@@ -56,4 +56,14 @@ and not the Valid, but not type safe:
     $this->_eventsManager = $eventsManager;
   }
 
+-------
+TD-004 : Use Something like PHPCPP to build a PHP extension that includes
+zephir compiler and user functions 
+
+ex: create_instance, starts_with, zephir_create_instance, etc.
+
+This would allow us to have only the base zephir support and use the
+PHP version of the extension.
+
+
 

@@ -18,7 +18,7 @@
  */
 
 /*
- * Zephir Builtin Functions
+ * Zephir Included User Functions
  */
 
 /**
@@ -34,51 +34,14 @@ function is_php_version($version) {
   return false;
 }
 
-function zephir_read_property($object, $property) {
-  /* TODO Improve Handling 
-   * i.e. if $object is not an object -  "Trying to get property \"%s\" of non-object"
-   * etc.
-   * look at generated code for zephir_read_property
-   */
-  if (zephir_isset_property($object, $property)) {
-    return $object->$property;
-  }
-}
-
-function zephir_isset_array($array, $index) {
-  if (isset($array) && isset($index)) {
-    switch (gettype($index)) {
-      case 'double':
-        $index = (integer) $index;
-      case 'boolean':
-      case 'integer':
-      case 'resource':
-        return isset($a[$index]);
-      case 'NULL':
-        $index = '';
-      case 'string':
-        return array_key_exists($index, $array);
-      default:
-        throw new \Exception('Illegal offset type');
-    }
-  }
-  return false;
-}
-
-function zephir_isset_property($object, $property) {
-  if (isset($object) && isset($property)) {
-    if (is_object($object) && is_string($property)) {
-      return property_exists($object, $property);
-    }
-  }
-  return false;
-}
-
+/**
+ * 
+ * @param type $str
+ * @param type $compared
+ * @param type $case_sensitive
+ * @return boolean
+ */
 function starts_with($str, $compared, $case_sensitive = false) {
-  return zephir_starts_with($str, $compared, $case_sensitive);
-}
-
-function zephir_starts_with($str, $compared, $case_sensitive = false) {
   if (!isset($str) || !isset($compared)) {
     return false;
   }
@@ -96,4 +59,64 @@ function zephir_starts_with($str, $compared, $case_sensitive = false) {
   } else {
     return $case_sensitive ? substr($str, 0, $l_compared) === $compared : strncasecmp($str, $compared, $l_compared) === 0;
   }
+}
+
+/**
+ * 
+ * @param type $class
+ * @return \class
+ * @throws \Exception
+ */
+function create_instance($class) {
+  // Is 'class' a valid string?
+  if (!isset($class) || !is_string($class)) { // YES
+    throw new \Exception("Invalid class name");
+  }
+
+  // Does class exist?
+  if (!class_exists($class)) { // YES
+    throw new \Exception("Class [{$class}] does not exist");
+  }
+
+  // Create Class Instance
+  return new $class;
+}
+
+/**
+ * 
+ * @param type $class
+ * @param type $parameters
+ * @return type
+ * @throws \Exception
+ */
+function create_instance_params($class, $parameters) {
+  // Is 'class' a valid string?
+  if (!isset($class) || !is_string($class)) { // YES
+    throw new \Exception("Invalid class name");
+  }
+
+  // Is 'parameters' a valid array?
+  if (!isset($parameters) || !is_array($parameters)) { // YES
+    throw new \Exception("Instantiation parameters must be an array");
+  }
+
+  // Does class exist?
+  if (!class_exists($class)) { // YES
+    throw new \Exception("Class [{$class}] does not exist");
+  }
+
+  // Build Constructor Parameters
+  $re_args = [];
+  $refMethod = new ReflectionMethod($class, '__construct');
+  foreach ($refMethod->getParameters() as $key => $param) {
+    if ($param->isPassedByReference()) {
+      $re_args[$key] = &$parameters[$key];
+    } else {
+      $re_args[$key] = $parameters[$key];
+    }
+  }
+
+  // Create Class Instance
+  $refClass = new ReflectionClass('class_name_here');
+  return $refClass->newInstanceArgs((array) $re_args);
 }
