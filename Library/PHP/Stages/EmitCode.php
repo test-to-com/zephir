@@ -201,43 +201,46 @@ class EmitCode implements IStage {
     } else if ($class['abstract']) {
       $this->_emitter->emit('abstract');
     }
+    $this->_emitter->emit(["class", $class['name']]);
 
     // TODO: Move to the Flag to Configuration File
+    $config_classLFExtends = true;            // Seperate class / extends with line-feed
+    // Handle Extends
+    $extends = isset($class['extends']) ? $class['extends'] : null;
+    if (isset($extends)) {
+      $this->_emitter->emitNL($config_classLFExtends);
+      $this->_emitter->indent($config_classLFExtends);
+      $this->_emitter->emit(['extends', $extends]);
+      $this->_emitter->unindent($config_classLFExtends);
+    }
+
+    // TODO: Move to the Flag to Configuration File
+    $config_classLFImplementExtends = true;   // Seperate implment/extends with line-feed
     $config_classLFImplements = true; // Seperate class / implements with line-feed
     $config_classNLImplements = true; // Multiple Implements on Seperate Lines
-    $this->_emitter->emit(["class", $class['name']]);
-    $implements = isset($ast['implements']) ? $ast['implements'] : null;
+
+    // Handle Implements
+    $implements = isset($class['implements']) ? $class['implements'] : null;
     if (isset($implements)) {
-      $this->_emitter->emitNL($config_classLFImplements);
-      $this->_emitter->indent($config_classLFImplements);
+      // Add Line Feed before Implements?
+      $lf = $config_classLFExtends ||
+        ($config_classLFImplementExtends && isset($extends));
+      
+      $this->_emitter->emitNL($lf);
+      $this->_emitter->indent($lf);
       $this->_emitter->emit('implements');
       $first = true;
       foreach ($implements as $interace) {
         if (!$first) {
           $this->_emitter->emit(',', $config_classNLImplements);
         }
-        $this->_emitVariable($interace, true);
+        $this->_property = true;
+        $this->_expressionVariable($interace, $class, null);
         $first = false;
       }
       /* TODO Handle Case in Which we have implements (but not extends with respect to
        * line feeds see oo/oonativeinterfaces
        */
-      $this->_emitter->unindent($config_classLFImplements);
-    }
-    $extends = isset($class['extends']) ? $class['extends'] : null;
-
-    // TODO: Move to the Flag to Configuration File
-    $config_classLFExtends = true;            // Seperate class / extends with line-feed
-    $config_classLFImplementExtends = true;   // Seperate implment/extends with line-feed
-
-    if (isset($extends)) {
-      // Add Line Feed before Extends?
-      $lf = (!isset($implements) && $config_classLFExtends) ||
-        ($config_classLFImplementExtends && isset($implements));
-
-      $this->_emitter->emitNL($lf);
-      $this->_emitter->indent($lf);
-      $this->_emitter->emit(['extends', $extends]);
       $this->_emitter->unindent($lf);
     }
 
