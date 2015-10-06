@@ -206,12 +206,15 @@ class InlineNormalize implements IPhase {
         case 'public':
         case 'protected':
         case 'private':
+        case 'static':
+        case 'abstract':
+        case 'final':
           break;
         case 'internal':
           $entry = 'private';
           break;
         default:
-          $entry = null;
+          throw new \Exception("Unhandled method visibility type [{$entry}] in line [{$method['line']}]");
       }
 
       if (isset($entry)) {
@@ -223,10 +226,7 @@ class InlineNormalize implements IPhase {
     if (count($visibility) === 0) { // NO: Use a default of public
       $visibility[] = 'public';
     } else if (count($visibility) > 1) {
-      $visibility[] = array_unique($entry);
-      if (count($visibility) > 1) {
-        throw new Exception("Method visibility is unclear");
-      }
+      $visibility = array_unique($visibility);
     }
 
     $method['visibility'] = $visibility;

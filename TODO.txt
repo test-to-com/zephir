@@ -1,0 +1,59 @@
+Pending Tasks
+-------
+TD-001 : Verify if files are 'included' (i.e. used ) more than once.
+
+Example Case:
+- From Phalcon\Mvc\Router (router.zep)
+
+namespace Phalcon\Mvc;
+
+use Phalcon\DiInterface;
+use Phalcon\Mvc\Router\Route;
+use Phalcon\Mvc\Router\Exception;
+use Phalcon\Http\RequestInterface;
+(*) use Phalcon\Events\ManagerInterface;
+use Phalcon\Mvc\Router\GroupInterface;
+use Phalcon\Mvc\Router\RouteInterface;
+use Phalcon\Di\InjectionAwareInterface;
+(*) use Phalcon\Events\ManagerInterface;
+use Phalcon\Events\EventsAwareInterface;
+-------
+TD-002 : Add a PHP Version Number to outputs.
+
+Example:
+in PHP Version 5.3 arrays had to be declared as array (....), in PHP
+Version 5.4 we could now use short notation [ ... ]
+
+So including PHP Output Version should be able to produce code correctly for
+5.3 or 5.4
+-------
+TD-003 : Use the Type Hints for Methods and Functions.
+
+Example: From router.zep
+
+	/**
+	 * Sets the events manager
+	 */
+	public function setEventsManager(<ManagerInterface> eventsManager)
+	{
+		let this->_eventsManager = eventsManager;
+	}
+
+Should produce:
+  /*
+  **
+	 * Sets the events manager
+	 *
+  */
+  public function setEventsManager(ManagerInterface $eventsManager)
+  {
+    $this->_eventsManager = $eventsManager;
+  }
+
+and not the Valid, but not type safe:
+  public function setEventsManager($eventsManager)
+  {
+    $this->_eventsManager = $eventsManager;
+  }
+
+
