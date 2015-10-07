@@ -112,6 +112,11 @@ class EmitCode implements IStage {
   }
 
   protected function _processExpression($expression, $class = null, $method = null) {
+    // Does the Expression Require a Cast?
+    if (isset($expression['do-cast']) && $expression['do-cast']) { // YES
+      $this->_emitCast($expression);
+    }
+
     $type = $expression['type'];
 
     // Do we have Specific Handler?
@@ -218,14 +223,13 @@ class EmitCode implements IStage {
     $config_classLFImplementExtends = true;   // Seperate implment/extends with line-feed
     $config_classLFImplements = true; // Seperate class / implements with line-feed
     $config_classNLImplements = true; // Multiple Implements on Seperate Lines
-
     // Handle Implements
     $implements = isset($class['implements']) ? $class['implements'] : null;
     if (isset($implements)) {
       // Add Line Feed before Implements?
       $lf = $config_classLFExtends ||
         ($config_classLFImplementExtends && isset($extends));
-      
+
       $this->_emitter->emitNL($lf);
       $this->_emitter->indent($lf);
       $this->_emitter->emit('implements');
@@ -708,14 +712,89 @@ class EmitCode implements IStage {
     $this->_emitter->emit(']');
   }
 
-  protected function _statementFor($for, $class, $method) {
-    // TODO Handle 'reverse'
+  protected function _emitStatementBlock($block, $class, $method) {
+    /* TODO 
+     * 1. Optimization, if an 'for' has no statements we should just use a ';' rather than a '{ }' pair
+     * 2. Optimization, if an 'for' has no statements, than maybe it is 'dead code' and should be removed
+     * NOTE: this requires that the test expression has no side-effects (i.e. assigning within an if, function call, etc.)
+     */
+    $this->_emitter->emit('{', true);
+    $this->_emitter->indent();
+
+    if (isset($block) && count($block)) {
+      $this->_processStatementBlock($block, $class, $method);
+    }
+
+    // Garauntee that we flush any pending lines
+    $this->_emitter->emitNL();
+    $this->_emitter->unindent();
+    $this->_emitter->emit('}', true);
+  }
+
+  protected function _emitFor($for, $class, $method) {
+    // Get Index and Count
+    $index = $for['key'];
+    $length = $for['length'];
+    $over = $for['expr'];
+
+    // Create a Value Assignement Statemement ex: $for['value'] = $key
+    $value_assign = [
+      'type' => 'assign',
+      'assign-to-type' => 'variable',
+      'operator' => 'assign',
+      'variable' => $for['value'],
+      'expr' => [
+        'type' => 'array-access',
+        'left' => [
+          'type' => 'variable',
+          'value' => $over['value'],
+          'file' => $for['file'],
+          'line' => $for['line'],
+          'char' => $for['char']
+        ],
+        'right' => [
+          'type' => 'variable',
+          'value' => $index,
+          'file' => $for['file'],
+          'line' => $for['line'],
+          'char' => $for['char']
+        ],
+        'file' => $for['file'],
+        'line' => $for['line'],
+        'char' => $for['char']
+      ]
+    ];
+
+    /*
+     * HEADER
+     */
+    $this->_emitter->emit(['for', '(']);
+    // Index Initialization Statement
+    $this->_emitter->emit(["\${$index}", '=', '0', ';']);
+    // For Cut Off Statement
+    $this->_emitter->emit(["\${$index}", '<', "\${$length}", ';']);
+    // For Increment Statement
+    $this->_emitter->emit(["\${$index}", '++']);
+    $this->_emitter->emit(')');
+
+    /*
+     * BODY
+     */
+    $config_forLFStartBlock = true; // for '{' on new line?
+    $this->_emitter->emitNL($config_forLFStartBlock);
+
+    // Add Value Assignments
+    $statements = $for['statements'];
+    array_unshift($statements, $value_assign);
+
+    $this->_emitStatementBlock($statements, $class, $method);
+  }
+
+  protected function _emitForEach($for, $class, $method) {
     // TODO Handle 'anonymous variable' i.e. key, _
-    // TODO Handle range() i.e.: range(1, 10)
-    // TODO over Strings
     // TODO from flow.zep : for _ in range(1, 10) (No Key, No Value)
-    $key = isset($for['key']) ? ($for['key'] !== '_' ? $for['key'] : null) : null;
-    $value = isset($for['value']) ? $for['value'] : null;
+    $key = isset($for['key']) ? $for['key'] : null;
+    $value = $for['value'];
 
     /*
      * HEADER
@@ -730,33 +809,21 @@ class EmitCode implements IStage {
     }
     $this->_emitter->emit(')');
 
-    // TODO: Move to the Flag to Configuration File
-    $config_forLFStartBlock = true; // method '{' on new line?
-    $this->_emitter->emitNL($config_forLFStartBlock);
-    $this->_emitter->emit('{', true);
-
-    /* TODO 
-     * 1. Optimization, if an 'for' has no statements we should just use a ';' rather than a '{ }' pair
-     * 2. Optimization, if an 'for' has no statements, than maybe it is 'dead code' and should be removed
-     * NOTE: this requires that the test expression has no side-effects (i.e. assigning within an if, function call, etc.)
-     */
     /*
      * BODY
      */
-    $this->_emitter->indent();
+    $config_forLFStartBlock = true; // for '{' on new line?
+    $this->_emitter->emitNL($config_forLFStartBlock);
+    $this->_emitStatementBlock($for['statements'], $class, $method);
+  }
 
-    if (isset($for['statements'])) {
-      $this->_processStatementBlock($for['statements'], $class, $method);
+  protected function _statementFor($for, $class, $method) {
+    $over_string = $for['basic-for'];
+    if ($over_string) {
+      $this->_emitFor($for, $class, $method);
+    } else {
+      $this->_emitForEach($for, $class, $method);
     }
-
-    // Garauntee that we flush any pending lines
-    $this->_emitter->emitNL();
-    $this->_emitter->unindent();
-
-    /*
-     * FOOTER
-     */
-    $this->_emitter->emit('}', true);
   }
 
   protected function _statementWhile($while, $class, $method) {
@@ -1237,27 +1304,6 @@ class EmitCode implements IStage {
     $this->_emitter->emitEOS();
   }
 
-  protected function _emitStatementClone($ast) {
-    throw new \Exception('TODO');
-  }
-
-  protected function _emitStatementRequire($ast) {
-    // TODO Merge Require Statement and Require Expression in single function
-    // NOTE: AST Structure is different than in the case of Fcall in which we have an expression wrapped as a statement
-    $expr = $ast['expr'];
-    echo 'require ';
-    $this->_emitExpression($expr);
-    echo ";\n";
-  }
-
-  protected function _emitExpression($ast) {
-    $this->_redirectAST($ast['type'], $ast);
-  }
-
-  protected function _emitReference($ast) {
-    throw new \Exception('TODO');
-  }
-
   /**
    * Class Static Method Call
    * 
@@ -1485,23 +1531,6 @@ class EmitCode implements IStage {
     $this->_emitter->emit('::');
     $this->_property = true;
     $this->_processExpression($right, $class, $method);
-  }
-
-  protected function _expressionCast($cast, $class, $method) {
-    // TODO Correct Type Casts in Normalization Phase rather than here...
-    $type = $cast['left'];
-    switch ($type) {
-      case 'char': // CHAR is a ZEP type only
-        $type = 'string';
-        break;
-      case 'long': // LONG is a ZEP type only
-        $type = 'int';
-        break;
-    }
-    if (isset($type)) {
-      $this->_emitter->emit(['(', $type, ')']);
-    }
-    $this->_processExpression($cast['right'], $class, $method);
   }
 
   protected function _expressionTernary($ternary, $class, $method) {
@@ -1788,6 +1817,10 @@ class EmitCode implements IStage {
 
   protected function _expressionConstant($constant, $class = null, $method = null) {
     $this->_emitter->emit($constant['value']);
+  }
+
+  protected function _emitCast($expression) {
+    $this->_emitter->emit(['(', $expression['data-type'], ')']);
   }
 
   protected function _handlerName($prefix, $name) {

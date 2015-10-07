@@ -80,3 +80,14 @@ function zephir_isempty($var) {
 
   return true;
 }
+
+/**
+ * 
+ * @param type $start
+ * @param type $finish
+ * @return type
+ */
+function zephir_erange($start, $finish) {
+  $range = range($start, $end);
+  return count($erange) > 2 ? array_slice($range, 1, -1) : [];
+}

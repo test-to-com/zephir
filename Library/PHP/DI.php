@@ -24,7 +24,7 @@ use Zephir\Common\Service as IService;
 use Zephir\Common\InjectionAware as IInjectionAware;
 use Zephir\Common\DI\Service;
 
-require_once __DIR__ . '../../../builtin.php';
+require_once __DIR__ . '../../../zephir_builtin.php';
 
 /**
  * Dependency Injection Implementation

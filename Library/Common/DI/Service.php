@@ -22,7 +22,8 @@ namespace Zephir\Common\DI;
 use Zephir\Common\DI as IDI;
 use Zephir\Common\Service as IService;
 
-require_once __DIR__ . '/../../../builtin.php';
+require_once __DIR__ . '/../../../zephir_builtin.php';
+require_once __DIR__ . '/../../../zephir_extras.php';
 
 /**
  * Dependency Injection Service Implementation

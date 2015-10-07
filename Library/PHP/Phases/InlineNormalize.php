@@ -37,6 +37,16 @@ class InlineNormalize implements IPhase {
   // Mixins
   use \Zephir\Common\Mixins\DI;
 
+  protected $php_cast_types = [
+    'int', 'integer',
+    'bool', 'boolean',
+    'float', 'double', 'real',
+    'string',
+    'array',
+    'object',
+    'unset', // AS of PHP 5
+    'binary'  // AS of PHP 5.2.1
+  ];
   protected $sudo_methods = [
     'array' => [
       'combine' => 'array_combine',
@@ -394,12 +404,173 @@ class InlineNormalize implements IPhase {
     return [$before, $while, $after];
   }
 
-  protected function _statementFor(&$class, &$method, $statement) {
+  protected function _statementBasicFor(&$class, &$method, $basicfor) {
+    $before = [];
+
+    /* TODO: Basic Optimizations
+     * 1. If the over expression is just simply a variable, don't create a 
+     * temporary variable to store the variable
+     * 
+     * example: from phalcon route.zep (~line 221)
+     * for ch in regexp {
+     * 
+     * translated to:
+     * $__t_s_3 = $regexp ;
+     * $__t_i_4 = strlen ( $__t_s_3 ) ;
+     * for ( $__t_i_3 = 0 ; $__t_i_3 < $__t_i_4 ; $__t_i_3 ++ ) {
+     *   $ch = $__t_s_3 [ $__t_i_3 ] ;
+     * 
+     * This could just as easily have been (which is more readable):
+     * $__t_i_4 = strlen ( $regexp ) ;
+     * for ( $__t_i_3 = 0 ; $__t_i_3 < $__t_i_4 ; $__t_i_3 ++ ) {
+     *   $ch = $regexp [ $__t_i_3 ] ;
+     */
+    // Process Key
+    // Does the For Each Already Have a Key Defined?
+    if (!isset($basicfor['key'])) { // NO: Create One
+      $basicfor['key'] = $this->_newLocalVariable($method, 'int', $basicfor['file'], $basicfor['line'], $basicfor['char']);
+    } else {
+      $key = $this->_getLocalVariable($method, $basicfor['key']);
+      $key['data-type'] = 'int';
+      $this->_registerLocalVariable($method, $key);
+    }
+
+    // Redo OVER Expression
+    $over = $basicfor['expr'];
+    $is_reverse = isset($statement['reverse']) && $statement['reverse'];
+    if ($is_reverse) { // YES
+      $reverse = [
+        'type' => 'fcall',
+        'name' => 'strrev',
+        'data-type' => 'string',
+        'call-type' => 1,
+        'parameters' => [$over],
+        'file' => $over['file'],
+        'line' => $over['line'],
+        'char' => $over['char']
+      ];
+
+      $over = $reverse;
+      unset($statement['reverse']);
+    }
+
+    // Create a Temporary Variable to Hold the String
+    $name = $this->_newLocalVariable($method, 'string', $over['file'], $over['line'], $over['char']);
+
+    // Create an Assignment to the Temporary Variable
+    $before[] = $this->_newAssignment($class, $method, $name, $over);
+
+    // Substitute $over with a variable access
+    $over = [
+      'type' => 'variable',
+      'value' => $name,
+      'file' => $over['file'],
+      'line' => $over['line'],
+      'char' => $over['char']
+    ];
+    $basicfor['expr'] = $over;
+
+    // Calculate String Length and Save in Temporary Variable
+    // Create a Temporary Variable to Hold String Length
+    $name = $this->_newLocalVariable($method, 'int', $over['file'], $over['line'], $over['char']);
+
+    // Create Function Call to strlen
+    $strlen = [
+      'type' => 'fcall',
+      'name' => 'strlen',
+      'data-type' => 'int',
+      'call-type' => 1,
+      'parameters' => [$over],
+      'file' => $over['file'],
+      'line' => $over['line'],
+      'char' => $over['char']
+    ];
+
+    // Assign return strlen to Temporary Variable
+    $before[] = $this->_newAssignment($class, $method, $name, $strlen);
+
+    // Save the Variable to Mark as Length
+    $basicfor['length'] = $name;
+
+    return [$before, $basicfor, null];
+  }
+
+  protected function _statementForEach(&$class, &$method, $foreach) {
+    $over = $foreach['expr'];
+
+    // Are we doing a for in reverse order?
+    $is_reverse = isset($statement['reverse']) && $statement['reverse'];
+    if ($is_reverse) { // YES
+      $reverse = [
+        'type' => 'fcall',
+        'name' => 'array_reverse',
+        'data-type' => 'array',
+        'call-type' => 1,
+        'parameters' => [$over],
+        'file' => $over['file'],
+        'line' => $over['line'],
+        'char' => $over['char']
+      ];
+
+      $over = $reverse;
+      unset($statement['reverse']);
+    }
+
+    $foreach['expr'] = $over;
+    return [null, $foreach, null];
+  }
+
+  protected function _statementFor(&$class, &$method, $for) {
     $before = [];
     $after = [];
 
+    /* FOR (KEY) */
+    // Does the for require a key?
+    if (isset($for['key'])) { // YES      
+      // Is the key anonymous?
+      if ($for['key'] === '_') { // YES: Ignore it
+        unset($for['key']);
+      } else { // NO: Register the the Key variable with the method
+        $this->_registerLocalVariable($method, $this->_builtSimpleVariable($for['key'], 'variable', $for['file'], $for['line'], $for['char']));
+      }
+    }
+
+    /* FOR (VALUE) */
+    // Does the for have a value?
+    if (isset($for['value'])) { // YES      
+      // Is the value anonymous?
+      if ($for['value'] !== '_') { // NO: Register it with the method
+        $this->_registerLocalVariable($method, $this->_builtSimpleVariable($for['value'], 'variable', $for['file'], $for['line'], $for['char']));
+      } else { // YES: Clear it
+        unset($for['value']);
+      }
+    }
+
+    // Does the for have an value?
+    if (!isset($for['value'])) { // NO: A value is Always Required, therefore create one
+      $for['value'] = $this->_newLocalVariable($method, 'variable', $for['file'], $for['line'], $for['char']);
+    }
+
     /* FOR (EXPR) */
-    list($prepend, $expression, $append) = $this->_processExpression($class, $method, $statement['expr']);
+    list($prepend, $over, $append) = $this->_processExpression($class, $method, $for['expr']);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
+    $for['expr'] = $over;
+
+    // Are we doing a For Over a String?
+    $over_string = isset($over['data-type']) && ($over['data-type'] === 'string');
+    $for['basic-for'] = $over_string;
+
+    // Is the for over a string?
+    if ($over_string) { // YES: Prepare a Basic For
+      list($prepend, $for, $append) = $this->_statementBasicFor($class, $method, $for);
+    } else { // NO: Use Normal For Processing
+      list($prepend, $for, $append) = $this->_statementForEach($class, $method, $for);
+    }
     if (isset($prepend) && count($prepend)) {
       $before = array_merge($before, $prepend);
     }
@@ -407,28 +578,10 @@ class InlineNormalize implements IPhase {
       $after = array_merge($after, $append);
     }
 
-    if (isset($statement['reverse']) && $statement['reverse']) {
-      /* TODO: Is it possible in zephir to do a foreach over a string?
-       * If so, then we have to handle the case in which the expression is a
-       * string and use strrev() instead of array_reverse
-       */
-      $expression = [
-        'type' => 'fcall',
-        'name' => 'array_reverse',
-        'call-type' => 1,
-        'parameters' => [$expression],
-        'file' => $expression['file'],
-        'line' => $expression['line'],
-        'char' => $expression['char']
-      ];
-      unset($statement['reverse']);
-    }
-    $statement['expr'] = $expression;
-
     /* FOR (STATEMENTS) */
-    $statement['statements'] = $this->_processStatementBlock($class, $method, $statement['statements']);
+    $for['statements'] = $this->_processStatementBlock($class, $method, $for['statements']);
 
-    return [$before, $statement, $after];
+    return [$before, $for, $after];
   }
 
   protected function _statementFetch(&$class, &$method, $fetch) {
@@ -575,10 +728,10 @@ class InlineNormalize implements IPhase {
         //Do we already have a catch variable?
         if (isset($catch['variable'])) { // YES: Save it as Method Local
           $variable = $catch['variable'];
-          $this->_addLocalVariable($class, $method, $variable);
+          $this->_registerLocalVariable($method, $variable);
           $tv_name = $variable['value'];
         } else { // NO: Create a New Method Local Variable
-          $tv_name = $this->_newLocalVariable($class, $method, 'variable', $catch['file'], $catch['line'], $catch['char']);
+          $tv_name = $this->_newLocalVariable($method, 'variable', $catch['file'], $catch['line'], $catch['char']);
         }
 
         // Decouple Multiple Classes into Single Class Catch Clause
@@ -602,7 +755,7 @@ class InlineNormalize implements IPhase {
 
       $trycatch['catches'] = $catches;
     } else { // NO: Create an Empty Catch Statement
-      $tv_name = $this->_newLocalVariable($class, $method, 'variable', $trycatch['file'], $trycatch['line'], $trycatch['char']);
+      $tv_name = $this->_newLocalVariable($method, 'variable', $trycatch['file'], $trycatch['line'], $trycatch['char']);
       $trycatch['catches'] = [
         [
           'class' => [
@@ -659,7 +812,7 @@ class InlineNormalize implements IPhase {
           $file = $assignment['file'];
           $line = $assignment['line'];
           $char = $assignment['char'];
-          $tv_name = $this->_newLocalVariable($class, $method, 'string', $file, $line, $char);
+          $tv_name = $this->_newLocalVariable($method, 'string', $file, $line, $char);
           // Step 2: Assign Value to New Local
           $before[] = [
             'type' => 'assign',
@@ -690,7 +843,7 @@ class InlineNormalize implements IPhase {
           $file = $assignment['file'];
           $line = $assignment['line'];
           $char = $assignment['char'];
-          $tv_name = $this->_newLocalVariable($class, $method, 'string', $file, $line, $char);
+          $tv_name = $this->_newLocalVariable($method, 'string', $file, $line, $char);
 
           // Step 2: Assign Value to New Local
           $before[] = [
@@ -1042,10 +1195,41 @@ class InlineNormalize implements IPhase {
     return [null, $expression, null];
   }
 
-  protected function _expressionTypeHint(&$class, &$method, $typehint) {
-    $before = [];
-    $after = [];
+  protected function _expressionCast(&$class, &$method, $cast) {
+    /* in the Cast Expression, the LHS (i.e. $cast['left'] is just a string 
+     * indicating the type to cast to...
+     */
 
+    $do_cast = true;
+    $data_type = $cast['left'];
+    // MAP ZEP ONLY TYPES to PHP STANDARD TYPES
+    switch ($data_type) {
+      case 'char': // CHAR is a ZEP type only
+      case 'uchar': // UNSIGNED CHAR is a ZEP type only
+        $datatype = 'string';
+        break;
+      case 'uint': // UNSIGNED INT is a ZEP type only
+      case 'long': // LONG is a ZEP type only
+      case 'ulong': // UNSIGNED LONG is a ZEP type only
+        $datatype = 'int';
+        break;
+    }
+
+    // Are we doing a cast to a PHP castable type?
+    if (array_search($data_type, $this->php_cast_types) === FALSE) { // NO: Then treat Cast as Type Hint
+      $do_cast = false;
+    }
+
+    // Process Right Expression
+    list($before, $cast, $after) = $this->_processExpression($class, $method, $cast['right']);
+
+    // Add a 'data-type'  property to the AST and Flag it as a CAST.
+    $cast['data-type'] = $data_type;
+    $cast['do-cast'] = $do_cast;
+    return [$before, $cast, $after];
+  }
+
+  protected function _expressionTypeHint(&$class, &$method, $typehint) {
     /* TODO Use Type Hints. How?
      * 1. As the expected return type of the expression (associate the type with the expression
      * so that it get perculated up the expression tree). This would allow the compiler
@@ -1053,8 +1237,13 @@ class InlineNormalize implements IPhase {
      * 2. For debug purposes, we could add asserts to verify that the returned
      * value is actually of the type expected...
      */
-    // Unlikely doesn't apply to PHP (so just remove it)
-    list($prepend, $typehint, $append) = $this->_processExpression($class, $method, $typehint['right']);
+    $data_type = $typehint['left']['value'];
+
+    // Type hinting in PHP can only de done at the method/fuunction level and doesn't apply to PHP (so just remove it)
+    list($before, $typehint, $after) = $this->_processExpression($class, $method, $typehint['right']);
+
+    // Add a 'data-type'  property to the AST
+    $typehint['data-type'] = $data_type;
     return [$before, $typehint, $after];
   }
 
@@ -1226,7 +1415,7 @@ class InlineNormalize implements IPhase {
     $after = [];
 
     // Process Left
-    list($prepend, $left, $append) = $this->_processExpression($class, $closure, $irange['left']);
+    list($prepend, $left, $append) = $this->_processExpression($class, $method, $irange['left']);
     if (isset($prepend) && count($prepend)) {
       $before = array_merge($before, $prepend);
     }
@@ -1235,7 +1424,7 @@ class InlineNormalize implements IPhase {
     }
 
     // Process Right
-    list($prepend, $right, $append) = $this->_processExpression($class, $closure, $irange['right']);
+    list($prepend, $right, $append) = $this->_processExpression($class, $method, $irange['right']);
     if (isset($prepend) && count($prepend)) {
       $before = array_merge($before, $prepend);
     }
@@ -1243,17 +1432,13 @@ class InlineNormalize implements IPhase {
       $after = array_merge($after, $append);
     }
 
-    /* TODO
-     * Add Type Hint (stating that the return result is an array, so that
-     * it can be combiner with an array sudo method call)
-     */
-
     /* MAP AST to equivalent PHP function call
      * range($irange['left'], $irange['right']) 
      */
     $function = [
       'type' => 'fcall',
       'name' => 'range',
+      'data-type' => 'array',
       'call-type' => 1,
       'parameters' => [$left, $right],
       'file' => $irange['file'],
@@ -1265,40 +1450,42 @@ class InlineNormalize implements IPhase {
   }
 
   protected function _expressionErange(&$class, &$method, $erange) {
-    /* TODO
-     * Add Type Hint (stating that the return result is an array, so that
-     * it can be combiner with an array sudo method call)
-     */
+    $before = [];
+    $after = [];
 
-    /* TODO consider using a single custom function to handle erange
-     * Benefits:
-     * 1. More extensive type checking and handling of empty ranges.
-     */
+    // Process Left
+    list($prepend, $left, $append) = $this->_processExpression($class, $method, $erange['left']);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
 
-    /* MAP AST to equivalent PHP function calls
-     * array_shift(array_pop(range($erange['left'], $erange['right'])))
+    // Process Right
+    list($prepend, $right, $append) = $this->_processExpression($class, $method, $erange['right']);
+    if (isset($prepend) && count($prepend)) {
+      $before = array_merge($before, $prepend);
+    }
+    if (isset($append) && count($append)) {
+      $after = array_merge($after, $append);
+    }
+
+    /* MAP AST to ZEPHIR BUILT-IN Function
+     * zephir_erange($irange['left'], $irange['right']) 
      */
-    list($before, $range, $after) = $this->_expressionIrange($class, $method, $erange);
-    $array_pop = [
+    $function = [
       'type' => 'fcall',
-      'name' => 'array_pop',
+      'name' => 'zephir_erange',
+      'data-type' => 'array',
       'call-type' => 1,
-      'parameters' => [$range],
+      'parameters' => [$left, $right],
       'file' => $erange['file'],
       'line' => $erange['line'],
       'char' => $erange['char']
     ];
-    $array_shift = [
-      'type' => 'fcall',
-      'name' => 'array_shift',
-      'call-type' => 1,
-      'parameters' => [$array_pop],
-      'file' => $erange['file'],
-      'line' => $erange['line'],
-      'char' => $erange['char']
-    ];
 
-    return [$before, $array_shift, $after];
+    return [$before, $function, $after];
   }
 
   protected function _expressionArray(&$class, &$method, $expression) {
@@ -1328,7 +1515,7 @@ class InlineNormalize implements IPhase {
 
     // Step 1: Create Local Variable and Assignment Statement
     $right = $expression['right'];
-    $tv_name = $this->_newLocalVariable($class, $method, $right['type'], $right['file'], $right['line'], $right['char']);
+    $tv_name = $this->_newLocalVariable($method, $right['type'], $right['file'], $right['line'], $right['char']);
     $tv_assignment = $this->_newAssignment($class, $method, $tv_name, $right);
     $before[] = $tv_assignment;
 
@@ -1345,7 +1532,7 @@ class InlineNormalize implements IPhase {
     return [$before, $expression, $after];
   }
 
-  protected function _newLocalVariable(&$class, &$method, $datatype, $file, $line, $char) {
+  protected function _nextLocalVarName($method, $datatype) {
     // Can we handle the Variable Type
     switch ($datatype) {
       case 'array':
@@ -1370,7 +1557,7 @@ class InlineNormalize implements IPhase {
         $v_prefix = '__t_v_';
         break;
       default:
-        throw new \Exception("Can't Create Local Variable of type [{$datatype}] in line [{$line}].");
+        throw new \Exception("Can't Create Local Variable of type [{$datatype}]");
     }
 
     // Find a Valid Local Variable Name
@@ -1384,23 +1571,35 @@ class InlineNormalize implements IPhase {
       $i++;
     } while (true);
 
-    // Add Variable to Method Locals
-    $this->_addLocalVariable($class, $method, [
-      'value' => $v_name,
-      'type' => $datatype,
-      'file' => $file,
-      'line' => $line,
-      'char' => $char
-    ]);
-
     return $v_name;
   }
 
-  protected function _addLocalVariable(&$class, &$method, $variable) {
+  protected function _getLocalVariable($method, $name) {
+    return isset($method['locals'][$name]) ? $method['locals'][$name] : null;
+  }
+
+  protected function _registerLocalVariable(&$method, $variable) {
     $v_name = $variable['value'];
 
     // Add Variable to Method Locals
     $method['locals'][$v_name] = $variable;
+  }
+
+  protected function _newLocalVariable(&$method, $datatype, $file = null, $line = null, $char = null) {
+    $v_name = $this->_nextLocalVarName($method, $datatype);
+    // Add Variable to Method Locals
+    $this->_registerLocalVariable($method, $this->_builtSimpleVariable($v_name, $datatype, $file, $line, $char));
+    return $v_name;
+  }
+
+  protected function _builtSimpleVariable($name, $datatype, $file = null, $line = null, $char = null) {
+    return [
+      'value' => $name,
+      'data-type' => $datatype,
+      'file' => $file,
+      'line' => $line,
+      'char' => $char
+    ];
   }
 
   protected function _newAssignment($class, $method, $v_name, $expression) {
@@ -1418,25 +1617,6 @@ class InlineNormalize implements IPhase {
     ];
 
     return $assignment;
-  }
-
-  protected function _expressionCast(&$class, &$method, $cast) {
-    $before = [];
-    $after = [];
-
-    /* in the Cast Expression, the LHS (i.e. $cast['left'] is just a string */
-
-    // Process Right Expression
-    list($prepend, $right, $append) = $this->_processExpression($class, $method, $cast['right']);
-    if (isset($prepend) && count($prepend)) {
-      $before = array_merge($before, $prepend);
-    }
-    $cast['right'] = $right;
-    if (isset($append) && count($append)) {
-      $after = array_merge($after, $append);
-    }
-
-    return [$before, $cast, $after];
   }
 
   protected function _expressionTernary(&$class, &$method, $ternary) {
@@ -1486,6 +1666,18 @@ class InlineNormalize implements IPhase {
     // For now, simply treat as a string
     $istring['type'] = 'string';
     return [null, $istring, null];
+  }
+
+  protected function _expressionVariable(&$class, &$method, $variable) {
+    // Get Variable Declaration
+    $declaration = $this->_lookup($class, $method, $variable);
+
+    // Do we have a declaration?
+    if (isset($declaration)) { // YES: Add data-type to the variable
+      $variable['data-type'] = $declaration['data-type'];
+    }
+
+    return [null, $variable, null];
   }
 
   protected function _expressionDEFAULT(&$class, &$method, $expression) {
