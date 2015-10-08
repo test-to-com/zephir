@@ -71,7 +71,7 @@ function zephir_isempty($var) {
     if (is_bool($var)) {
       return $var === FALSE;
     } else if (is_string($var)) {
-      return strlen($var) > 0;
+      return strlen($var) === 0;
     }
 
     // equivalent !zend_is_true($var)
@@ -90,4 +90,12 @@ function zephir_isempty($var) {
 function zephir_erange($start, $finish) {
   $range = range($start, $end);
   return count($erange) > 2 ? array_slice($range, 1, -1) : [];
+}
+
+/**
+ * 
+ */
+function create_symbol_table() {
+  // Zephir Extension Optimication (not required in PHP)
+  // see kernel/**/memory.c zephir_create_symbol_table
 }
