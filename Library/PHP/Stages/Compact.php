@@ -51,7 +51,7 @@ class Compact implements IStage {
   public function reset() {
     return $this;
   }
-  
+
   /**
    * Compile or Transform the AST.
    * 
@@ -334,15 +334,13 @@ class Compact implements IStage {
           break;
         case 'if':
           // Process If (TRUE) block
-          if (isset($statement['statements'])) {
-            $statement['statements'] = $this->_compactStatementBlock($method, $statement['statements']);
-          }
+          $statement['statements'] = isset($statement['statements']) ? $this->_compactStatementBlock($method, $statement['statements']) : [];
+
           // Process If (OTHER CONDITIONS) block
           if (isset($statement['elseif_statements'])) {
-            $elseifs = [];
-            foreach ($statement['elseif_statements'] as $elseif) {
-              $elseif['statements'] = $this->_compactStatementBlock($method, $elseif['statements']);
-              $elseifs[] = $elseif;
+            $elseifs = $statement['elseif_statements'];
+            foreach ($elseifs as &$elseif) {
+              $elseif['statements'] = isset($elseif['statements']) ? $this->_compactStatementBlock($method, $elseif['statements']) : [];
             }
             $statement['elseif_statements'] = $elseifs;
           }
@@ -352,15 +350,14 @@ class Compact implements IStage {
           }
           break;
         case 'switch':
-          // Process If (OTHER CONDITIONS) block
+          $clauses = [];
           if (isset($statement['clauses'])) {
-            $clauses = [];
-            foreach ($statement['clauses'] as $clause) {
-              $clause['statements'] = isset($clause['clauses']) ? $this->_compactStatementBlock($method, $clause['statements']) : [];
-              $clauses[] = $clause;
+            $clauses = $statement['clauses'];
+            foreach ($clauses as &$clause) {
+              $clause['statements'] = isset($clause['statements']) ? $this->_compactStatementBlock($method, $clause['statements']) : [];
             }
-            $statement['clauses'] = $clauses;
           }
+          $statement['clauses'] = $clauses;
           break;
       }
 

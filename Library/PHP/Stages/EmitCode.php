@@ -27,6 +27,7 @@ use Zephir\Common\Stage as IStage;
  * @author Paulo Ferreira <pf at sourcenotes.org>
  */
 class EmitCode implements IStage {
+  const VERSION = '20151008';
 
   // Mixins
   use \Zephir\Common\Mixins\DI;
@@ -74,6 +75,7 @@ class EmitCode implements IStage {
    */
   public function compile($ast) {
     $this->_emitter->emit("<?php", true);
+    $this->_emitter->emit('// EMITTER VERSION [' . self::VERSION . ']', true);
     $this->_processStatementBlock($ast);
     /*
       foreach ($ast as $index => $entry) {

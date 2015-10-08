@@ -694,14 +694,12 @@ class InlineNormalize implements IPhase {
       $after = array_merge($after, $append);
     }
 
-    /* SWITCH (CLAUSES) */
-    if (isset($switch['clauses'])) {
-      foreach ($switch['clauses'] as &$clause) {
-        $clause['statements'] = $this->_processStatementBlock($class, $method, $clause['statements']);
-      }
-    } else {
-      $switch['clauses'] = [];
+    /* SWITCH (CLAUSES) : REQUIRES COMPACT PHASE TO MAKE SURE THAT CLAUSES EXISTS */
+    $clauses = $switch['clauses'];
+    foreach ($clauses as &$clause) {
+      $clause['statements'] = $this->_processStatementBlock($class, $method, $clause['statements']);
     }
+    $switch['clauses'] = $clauses;
 
     return [$before, $switch, $after];
   }

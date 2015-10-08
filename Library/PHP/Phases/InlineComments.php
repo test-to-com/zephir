@@ -210,15 +210,12 @@ class InlineComments implements IPhase {
           break;
         case 'if':
           // Process If (TRUE) block
-          if (isset($statement['statements'])) {
-            $statement['statements'] = $this->_processStatementBlock($statement['statements']);
-          }
+          $statement['statements'] = $this->_processStatementBlock($statement['statements']);
           // Process If (OTHER CONDITIONS) block
           if (isset($statement['elseif_statements'])) {
-            $elseifs = [];
-            foreach ($statement['elseif_statements'] as $elseif) {
+            $elseifs = $statement['elseif_statements'];
+            foreach ($elseifs as &$elseif) {
               $elseif['statements'] = $this->_processStatementBlock($elseif['statements']);
-              $elseifs[] = $elseif;
             }
             $statement['elseif_statements'] = $elseifs;
           }
@@ -228,15 +225,11 @@ class InlineComments implements IPhase {
           }
           break;
         case 'switch':
-          // Process If (OTHER CONDITIONS) block
-          if (isset($statement['clauses'])) {
-            $clauses = [];
-            foreach ($statement['clauses'] as $clause) {
-              $clause['statements'] = $this->_processStatementBlock($clause['statements']);
-              $clauses[] = $clause;
-            }
-            $statement['clauses'] = $clauses;
+          $clauses = $statement['clauses'];
+          foreach ($clauses as &$clause) {
+            $clause['statements'] = $this->_processStatementBlock($clause['statements']);
           }
+          $statement['clauses'] = $clauses;
           break;
       }
 
