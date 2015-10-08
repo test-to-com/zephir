@@ -40,7 +40,7 @@ function zephir_isset_array($array, $index) {
       case 'boolean':
       case 'integer':
       case 'resource':
-        return isset($a[$index]);
+        return isset($array[$index]);
       case 'NULL':
         $index = '';
       case 'string':

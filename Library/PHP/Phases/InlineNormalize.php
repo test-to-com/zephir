@@ -620,10 +620,23 @@ class InlineNormalize implements IPhase {
 
     /* IF (EXPR) */
     $expression = $statement['expr'];
+
+    // Is the Next Expression a not?
+    $not = $expression['type'] === 'not';
+
+    $fetch = null;
+    if ($not && ($expression['left']['type'] === 'fetch')) {
+      $fetch = ($expression['left']['type'] === 'fetch') ? $expression['left'] : null;
+    } else if ($expression['type'] === 'fetch') {
+      $fetch = $expression;
+    }
+
     // Are we Dealing with Fetch Expression
-    if ($expression['type'] === 'fetch') { // YES
+    if (isset($fetch)) { // YES
       /* FETCH STATEMENTS ARE PROCESSED in 2 STAGES
-       * 1. An Assignment Statement is added to statement block
+       * 1. An Assignment Statement is added to a statement block
+       * a) if fetch, assigment is added to if,
+       * b) if !fetch, assignment is added to else
        * 2. Fetch is replaced by an isset() test...
        */
       // Create Assignment Statement
@@ -635,22 +648,30 @@ class InlineNormalize implements IPhase {
             'assign-type' => 'variable',
             'operator' => 'assign',
             // EXPECTED = $expression['left']['type'] === 'variable'!??
-            'variable' => $expression['left']['value'],
-            'expr' => $expression['right'],
-            'file' => $expression['file'],
-            'line' => $expression['line'],
-            'char' => $expression['char'],
+            'variable' => $fetch['left']['value'],
+            'expr' => $fetch['right'],
+            'file' => $fetch['file'],
+            'line' => $fetch['line'],
+            'char' => $fetch['char'],
           ],
         ],
-        'file' => $expression['file'],
-        'line' => $expression['line'],
-        'char' => $expression['char'],
+        'file' => $fetch['file'],
+        'line' => $fetch['line'],
+        'char' => $fetch['char'],
       ];
 
-      if (count($statement['statements']) >= 1) {
-        array_unshift($statement['statements'], $let);
+      if ($not) {
+        if (isset($statement['else_statements'])) {
+          array_unshift($statement['statements'], $let);
+        } else {
+          $statement['else_statements'] = [ $let];
+        }
       } else {
-        $statement['statements'][] = $let;
+        if (count($statement['statements']) >= 1) {
+          array_unshift($statement['statements'], $let);
+        } else {
+          $statement['statements'][] = $let;
+        }
       }
     }
 
