@@ -35,6 +35,9 @@ function is_php_version($version) {
 }
 
 /**
+ * See zephir_start_with() in file string.c
+ * 
+ * Checks if a zval string starts with a zval string
  * 
  * @param string $haystack
  * @param string $needle
@@ -61,6 +64,9 @@ function starts_with($haystack, $needle, $case_sensitive = false) {
 }
 
 /**
+ * See zephir_memnstr() and zephir_memnstr_str() in file string.c
+ * 
+ * Check if a string is contained into another
  * 
  * @param string $haystack
  * @param string $needle
@@ -78,6 +84,9 @@ function memstr($haystack, $needle) {
 }
 
 /**
+ * See zephir_create_instance() in file object.c
+ * 
+ * Creates a new instance dynamically. Call constructor without parameters
  * 
  * @param string $class
  * @return \class
@@ -99,7 +108,10 @@ function create_instance($class) {
 }
 
 /**
+ * See zephir_create_instance_params() in file object.c
  * 
+ * Creates a new instance dynamically calling constructor with parameters
+ * s
  * @param string $class
  * @param array $parameters
  * @return type
@@ -135,4 +147,65 @@ function create_instance_params($class, $parameters) {
   // Create Class Instance
   $refClass = new ReflectionClass('class_name_here');
   return $refClass->newInstanceArgs((array) $re_args);
+}
+
+/**
+ * See zephir_create_symbol_table() in memory.c
+ * 
+ */
+function create_symbol_table() {
+  // Zephir Extension Optimication (not required in PHP)
+  // see kernel/**/memory.c zephir_create_symbol_table
+}
+
+/**
+ * See zephir_prepare_virtual_path() in file.c
+ * 
+ * Replaces directory separators by the virtual separator
+ * 
+ * @param string $path
+ * @param string $virtual_separator
+ * @return string
+ */
+function prepare_virtual_path($path, $virtual_separator) {
+  if (isset($path) && is_string($path)) {
+    if (!isset($virtual_separator) || !is_string($virtual_separator)) {
+      return $path;
+    }
+  } else {
+    return '';
+  }
+
+  // Convert Path to lower case
+  $virtual_str = strtolower($path);
+  // replace '/', '\' and ':' with $virtual_separator
+  $virtual_str = preg_replace("/\/|\\|:/", $virtual_separator, $virtual_str);
+  return $virtual_str;
+}
+
+/**
+ * See zephir_compare_mtime() in file.c
+ * 
+ * Compares two file paths returning 1 if the first mtime is greater or equal than the second
+ * 
+ * @param string $filename1
+ * @param string $filename2
+ * @return int
+ * @throws Exception
+ */
+function compare_mtime($filename1, $filename2) {
+  if (!isset($filename1) || !is_string($filename1)) {
+    throw new Exception("Invalid arguments supplied for compare_mtime()");
+  }
+  if (!isset($filename2) || !is_string($filename2)) {
+    throw new Exception("Invalid arguments supplied for compare_mtime()");
+  }
+
+  $mfilename1 = filemtime($filename1);
+  $mfilename2 = filemtime($filename2);
+  if (($mfilename1 === FALSE) || ($mfilename2 === FALSE)) {
+    throw new Exception("Invalid arguments supplied for compare_mtime()");
+  }
+
+  return (int) $mfilename1 >= $mfilename2;
 }

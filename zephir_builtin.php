@@ -91,11 +91,3 @@ function zephir_erange($start, $finish) {
   $range = range($start, $end);
   return count($erange) > 2 ? array_slice($range, 1, -1) : [];
 }
-
-/**
- * 
- */
-function create_symbol_table() {
-  // Zephir Extension Optimication (not required in PHP)
-  // see kernel/**/memory.c zephir_create_symbol_table
-}
