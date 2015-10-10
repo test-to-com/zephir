@@ -15,6 +15,8 @@
   | to obtain it through the world-wide-web, please send a note to           |
   | license@zephir-lang.com so we can mail you a copy immediately.           |
   +--------------------------------------------------------------------------+
+  | Authors: Paulo Ferreira <pf@sourcenotes.org>                             |
+  +--------------------------------------------------------------------------+
  */
 
 /*
