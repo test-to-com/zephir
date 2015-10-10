@@ -140,9 +140,44 @@ class InlineShortcuts implements IPhase {
     // Shortcut Type
     $type = $shortcut['name'];
 
+    // Calculate the Method Name
+    $methodName = null;
+    switch ($type) {
+      case 'toString':
+      case '__toString':
+        $methodName = '__toString';
+        $type = 'toString';
+        break;
+      case 'get':
+      case 'set':
+        /* HACK: zephir treats a single leading '_' as ignored (this is
+         * probably due to the fact that in phalcon, the coding style used,
+         * MARKS protected properties and methods with a leading '_'.
+         * The fact that zephir, takes this into consideration, and does not
+         * document, is a HACK.
+         * ex:
+         * protected _default {get};
+         * generates a getter with the name getDefault and not get_default.
+         */
+        $name = rtrim($property['name'], '_');
+
+        /* In order to improve this hack, I would like to extende this so that
+         * '_' is used as a word break and therefore would uppercase all the
+         * 1st letters in the word
+         * 
+         * example:
+         * _default_name or default_name or ___default_name all generate,
+         * getDefaultName
+         * 
+         * It's consistent with te existing hack but with a little extra.
+         */
+        $methodName = $type . implode(array_map('ucfirst', explode('_', $name)));
+        break;
+      default:
+        throw new \Exception("Unhandled shortcut type[{$type}] at line [{$shortcut['line']}]");
+    }
 
     // Basic Function Definition
-    $methodName = $type === 'toString' ? '__toString' : $shortcut['name'] . ucfirst($property['name']);
     $method = [
       'visibility' => ['public'],
       'type' => 'method',
