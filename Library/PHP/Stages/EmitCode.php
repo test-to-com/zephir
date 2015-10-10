@@ -27,6 +27,7 @@ use Zephir\Common\Stage as IStage;
  * @author Paulo Ferreira <pf at sourcenotes.org>
  */
 class EmitCode implements IStage {
+
   const VERSION = '20151008';
 
   // Mixins
@@ -1475,7 +1476,8 @@ class EmitCode implements IStage {
   }
 
   protected function _expressionTypeof($typeof, $class, $method) {
-    $this->_emitter->emit(['gettype', '(']);
+    // TODO: Transfer this to InlineNormalize (where it makes more sense to due the conversion to a function call)
+    $this->_emitter->emit(['zephir_typeof', '(']);
     $this->_processExpression($typeof['left'], $class, $method);
     $this->_emitter->emit(')');
   }

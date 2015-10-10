@@ -85,6 +85,20 @@ function zephir_isempty($var) {
 
 /**
  * 
+ * @param mixed $var
+ * @return string
+ */
+function zephir_typeof($var) {
+  // Is $var set?
+  if (!isset($var)) { // NO: ZEPHIR treats 'undefined' as === 'null'
+    return 'null';
+  }
+
+  return gettype($var);
+}
+
+/**
+ * 
  * @param type $start
  * @param type $finish
  * @return type
